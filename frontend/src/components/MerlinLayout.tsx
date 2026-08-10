@@ -56,14 +56,6 @@ export default function MerlinLayout({ children }: PropsWithChildren) {
             </Text>
           </Modal>
         </Center>
-        <Center>
-          <Text fz="sm" m="sm" c="dimmed">
-            made with ❤️ by{" "}
-            <Anchor fz="xs" href="https://github.com/bgalek">
-              bgalek
-            </Anchor>
-          </Text>
-        </Center>
       </Container>
     </div>
   );
