@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './AdminDashboard.css';
+import Analytics from './Analytics';
 
 interface User {
   sessionId: string;
@@ -17,7 +18,7 @@ interface LeaderboardStats {
 }
 
 const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'llm' | 'leaderboard'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'llm' | 'leaderboard' | 'analytics'>('dashboard');
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<LeaderboardStats | null>(null);
   const [loading, setLoading] = useState(false);
@@ -33,7 +34,7 @@ const AdminDashboard: React.FC = () => {
         const response = await fetch('/api/admin/users');
         const data = await response.json();
         setUsers(data);
-      } else if (activeTab === 'leaderboard') {
+      } else if (activeTab === 'leaderboard' || activeTab === 'dashboard') {
         const response = await fetch('/api/admin/leaderboard/stats');
         const data = await response.json();
         setStats(data);
@@ -79,6 +80,12 @@ const AdminDashboard: React.FC = () => {
         >
           🏆 Leaderboard
         </button>
+        <button
+          className={`nav-btn ${activeTab === 'analytics' ? 'active' : ''}`}
+          onClick={() => setActiveTab('analytics')}
+        >
+          📈 Analytics
+        </button>
       </div>
 
       <div className="admin-content">
@@ -86,6 +93,7 @@ const AdminDashboard: React.FC = () => {
         {activeTab === 'users' && <UsersTab users={users} loading={loading} />}
         {activeTab === 'llm' && <LlmConfigTab />}
         {activeTab === 'leaderboard' && <LeaderboardTab stats={stats} loading={loading} />}
+        {activeTab === 'analytics' && <Analytics />}
       </div>
     </div>
   );

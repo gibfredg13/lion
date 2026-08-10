@@ -1,0 +1,433 @@
+/* Analytics Component - Orange ING Branding */
+
+.analytics-container {
+  background: white;
+  border-radius: 8px;
+  padding: 30px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.analytics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  border-bottom: 3px solid #ff6600;
+  padding-bottom: 15px;
+}
+
+.analytics-header h2 {
+  color: #ff6600;
+  margin: 0;
+  font-size: 24px;
+}
+
+.export-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.export-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  color: white;
+}
+
+.export-btn.csv {
+  background: #ff6600;
+}
+
+.export-btn.csv:hover {
+  background: #ff8533;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 102, 0, 0.3);
+}
+
+.export-btn.json {
+  background: #004687;
+}
+
+.export-btn.json:hover {
+  background: #0056b3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 70, 135, 0.3);
+}
+
+/* Tabs */
+.analytics-tabs {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 25px;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  padding: 10px 20px;
+  border: 2px solid #ff6600;
+  background: white;
+  color: #ff6600;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  font-size: 14px;
+}
+
+.tab-btn:hover {
+  background: #ff6600;
+  color: white;
+  transform: translateY(-2px);
+}
+
+.tab-btn.active {
+  background: #ff6600;
+  color: white;
+  box-shadow: 0 4px 12px rgba(255, 102, 0, 0.3);
+}
+
+.analytics-content {
+  min-height: 400px;
+}
+
+/* Heatmap Tab */
+.heatmap-tab h3,
+.timeseries-tab h3,
+.users-tab h3,
+.tricks-tab h3 {
+  color: #ff6600;
+  margin: 0 0 20px 0;
+  font-size: 18px;
+}
+
+.heatmap-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.stat-card {
+  background: linear-gradient(135deg, #ff6600 0%, #ff8533 100%);
+  color: white;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.stat-card h4 {
+  margin: 0 0 10px 0;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.stat-card .big-number {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.heatmap-grid {
+  display: grid;
+  gap: 15px;
+}
+
+.heatmap-item {
+  background: #f9f9f9;
+  padding: 15px;
+  border-radius: 6px;
+  border-left: 4px solid #ff6600;
+}
+
+.heatmap-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.attack-name {
+  font-weight: 600;
+  color: #333;
+}
+
+.severity-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+}
+
+.severity-badge.critical {
+  background: #ff0000;
+}
+
+.severity-badge.high {
+  background: #ff6600;
+}
+
+.severity-badge.medium {
+  background: #ffaa00;
+}
+
+.severity-badge.low {
+  background: #ffdd00;
+  color: #333;
+}
+
+.heatmap-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.heatmap-bar {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.heatmap-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #666;
+}
+
+/* Timeseries Tab */
+.chart-container {
+  background: #f9f9f9;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+}
+
+.chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  min-width: 600px;
+  height: 350px;
+  padding: 10px 0;
+}
+
+.chart-bar-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 40px;
+}
+
+.chart-bar {
+  width: 100%;
+  background: linear-gradient(to top, #ff6600, #ff8533);
+  border-radius: 4px 4px 0 0;
+  min-height: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(255, 102, 0, 0.2);
+}
+
+.chart-bar:hover {
+  box-shadow: 0 4px 8px rgba(255, 102, 0, 0.4);
+  transform: scale(1.05);
+}
+
+.chart-label {
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.chart-value {
+  font-size: 11px;
+  color: #ff6600;
+  font-weight: 600;
+}
+
+.chart-stats {
+  background: #fff9f4;
+  padding: 15px;
+  border-left: 4px solid #ff6600;
+  border-radius: 4px;
+}
+
+.chart-stats p {
+  margin: 8px 0;
+  color: #333;
+}
+
+.chart-stats strong {
+  color: #ff6600;
+}
+
+/* Users Tab */
+.users-table-wrapper {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #ff6600;
+}
+
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.users-table thead {
+  background: #ff6600;
+  color: white;
+}
+
+.users-table th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+}
+
+.users-table td {
+  padding: 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.users-table tbody tr:hover {
+  background: #fff9f4;
+}
+
+.user-name {
+  font-weight: 600;
+  color: #333;
+}
+
+.user-email {
+  color: #ff6600;
+  font-size: 13px;
+}
+
+.center {
+  text-align: center;
+}
+
+.total-tokens {
+  font-weight: 600;
+  color: #ff6600;
+}
+
+/* Tricks Tab */
+.tricks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.trick-card {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.trick-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-3px);
+}
+
+.trick-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.trick-header h4 {
+  margin: 0;
+  color: #333;
+  font-size: 15px;
+  flex: 1;
+}
+
+.trick-description {
+  margin: 0 0 15px 0;
+  color: #666;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.trick-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.trick-stat {
+  background: #f9f9f9;
+  padding: 10px;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: #999;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ff6600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .analytics-header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: flex-start;
+  }
+
+  .export-buttons {
+    width: 100%;
+  }
+
+  .export-btn {
+    flex: 1;
+  }
+
+  .analytics-tabs {
+    gap: 8px;
+  }
+
+  .tab-btn {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+
+  .chart {
+    min-width: 100%;
+  }
+
+  .tricks-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .heatmap-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
