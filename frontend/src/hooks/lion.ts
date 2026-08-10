@@ -18,7 +18,7 @@ const api = wretch()
   };
 });
 
-export function useMerlin() {
+export function useLion() {
   return {
     question: useMutation({
       mutationFn: (prompt: string) =>
@@ -44,8 +44,8 @@ export function useMerlin() {
           .json<MerlinSession>(),
       onError: () => {
         notifications.show({
-          title: "Bad secret word",
-          message: "This isn't the secret phrase you're looking for.",
+          title: "The lion didn't reveal it",
+          message: "That's not the word the lion is protecting.",
           color: "red",
         });
       },
@@ -54,8 +54,8 @@ export function useMerlin() {
       mutationFn: () => api.url("/api/reset").post().res(),
       onSuccess: () => {
         notifications.show({
-          title: "Your progress was reset.",
-          message: "You'll now have to start over!",
+          title: "Your journey restarts.",
+          message: "Return to face the lion again!",
           color: "blue",
         });
       },
@@ -66,15 +66,15 @@ export function useMerlin() {
       },
       onSuccess: () => {
         notifications.show({
-          title: "Your name was submitted.",
-          message: "You'll now be on the leaderboard!",
+          title: "You're on the board!",
+          message: "Your name joins the greatest hunters!",
           color: "blue",
         });
       },
       onError: () => {
         notifications.show({
-          title: "Bad secret word",
-          message: "This isn't the secret phrase you're looking for.",
+          title: "The lion didn't reveal it",
+          message: "That's not the word the lion is protecting.",
           color: "red",
         });
       },

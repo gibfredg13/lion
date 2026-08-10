@@ -1,14 +1,14 @@
 import { Button, Stack, Text, Title } from "@mantine/core";
 import { useState } from "react";
-import { useMerlin } from "./hooks/merlin.ts";
-import MerlinLayout from "./components/MerlinLayout.tsx";
-import MerlinResponse from "./components/MerlinResponse.tsx";
-import MerlinPrompt from "./components/MerlinPrompt.tsx";
-import { MerlinPasswordForm } from "./components/MerlinPasswordForm.tsx";
+import { useLion } from "./hooks/lion.ts";
+import LionLayout from "./components/LionLayout.tsx";
+import LionSpeak from "./components/LionSpeak.tsx";
+import LionChallenge from "./components/LionChallenge.tsx";
+import { SecretWordForm } from "./components/SecretWordForm.tsx";
 import { MerlinSession, useSession } from "./hooks/session.ts";
 import { useQueryClient } from "@tanstack/react-query";
-import MerlinLoader from "./components/MerlinLoader.tsx";
-import MerlinCongratulations from "./components/MerlinCongratulations.tsx";
+import QuestLoader from "./components/QuestLoader.tsx";
+import Victory from "./components/Victory.tsx";
 import { modals } from "@mantine/modals";
 import AdminDashboard from "./components/AdminDashboard.tsx";
 import Leaderboard from "./components/Leaderboard.tsx";
@@ -63,14 +63,14 @@ export default function App() {
 
 function MainApp() {
   const session = useSession();
-  if (session.isLoading || !session.data) return <MerlinLoader />;
+  if (session.isLoading || !session.data) return <QuestLoader />;
   return (
-    <MerlinLayout>
+    <LionLayout>
       <Level
         currentLevel={session.data.currentLevel}
         maxLevel={session.data.maxLevel}
       />
-    </MerlinLayout>
+    </LionLayout>
   );
 }
 
@@ -94,13 +94,13 @@ function Level({
   maxLevel: number;
 }) {
   const queryClient = useQueryClient();
-  const merlin = useMerlin();
+  const merlin = useLion();
   const session = useSession();
   const [response, setResponse] = useState<string>();
 
   if (currentLevel > maxLevel)
     return (
-      <MerlinCongratulations
+      <Victory
         id={session.data?.id}
         submittedName={session.data?.submittedName}
         onReset={() => {
@@ -121,7 +121,7 @@ function Level({
         level's password. Merlin will level up each time you succeed. Can you
         defeat Level 7?
       </Text>
-      <MerlinPrompt
+      <LionChallenge
         disabled={merlin.question.isPending}
         onSubmit={(prompt) => {
           merlin.question.mutate(prompt, {
@@ -133,13 +133,13 @@ function Level({
         level={currentLevel}
         maxLevel={maxLevel}
       />
-      <MerlinResponse
+      <LionSpeak
         isLoading={merlin.question.isPending}
         response={response || "Hello traveler! Ask me anything..."}
       />
-      <MerlinPasswordForm
+      <SecretWordForm
         disabled={merlin.submit.isPending}
-        onSubmit={(password, reset) => {
+        onSubmit={(password: string, reset: () => void) => {
           merlin.submit.mutate(password, {
             onSuccess: (result: MerlinSession) => {
               if (result.currentLevel < result.maxLevel) {
@@ -147,7 +147,7 @@ function Level({
                   centered: true,
                   title: (
                     <Title size="h3" component="span">
-                      Awesome job!
+                      Victory!
                     </Title>
                   ),
                   children: (

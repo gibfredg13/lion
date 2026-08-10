@@ -49,10 +49,10 @@ export default function LoginPage() {
         <Stack gap="lg">
           <Box ta="center">
             <Title order={1} c="white" mb="xs">
-              🏦 HackMerlin
+              🦁 Lion's Quest
             </Title>
             <Text c="white" size="lg">
-              ING Security Challenge
+              Challenge Your Courage
             </Text>
           </Box>
 

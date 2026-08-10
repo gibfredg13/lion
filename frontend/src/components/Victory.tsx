@@ -1,9 +1,9 @@
 import { Anchor, Button, Stack, Text, TextInput, Title } from "@mantine/core";
 import ConfettiExplosion from "react-confetti-explosion";
 import { useRef } from "react";
-import { useMerlin } from "../hooks/merlin.ts";
+import { useLion } from "../hooks/lion.ts";
 
-export default function MerlinCongratulations({
+export default function Victory({
   id,
   submittedName,
   onReset,
@@ -13,7 +13,7 @@ export default function MerlinCongratulations({
   onReset: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const { addName } = useMerlin();
+  const { addName } = useLion();
   return (
     <>
       <Stack gap="xs" ref={ref}>
@@ -21,7 +21,7 @@ export default function MerlinCongratulations({
         <Title order={1} mt={-16}>
           Congratulations!
         </Title>
-        <Text>You have beaten Merlin!</Text>
+        <Text>You have completed the Lion's Quest!</Text>
         <form
           onSubmit={(e) => {
             const name = new FormData(e.currentTarget).get("name") as string;

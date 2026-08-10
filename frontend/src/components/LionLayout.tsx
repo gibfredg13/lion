@@ -5,30 +5,21 @@ import {
   Container,
   FocusTrap,
   Group,
-  Image,
-  List,
-  Modal,
-  Paper,
   Text,
+  Paper,
+  Modal,
+  List,
 } from "@mantine/core";
-import merlin from "../assets/merlin.svg";
 import { useQuery } from "@tanstack/react-query";
 import { useToggle } from "@mantine/hooks";
-import { useMerlin } from "../hooks/merlin.ts";
+import { useLion } from "../hooks/lion.ts";
 
-export default function MerlinLayout({ children }: PropsWithChildren) {
+export default function LionLayout({ children }: PropsWithChildren) {
   const [leaderboardOpen, toggleLeaderboard] = useToggle();
   return (
     <div style={{ display: "grid", placeItems: "center", height: "100%" }}>
       <Container size="xs">
-        <Image
-          alt="Merlin the wizard"
-          src={merlin}
-          width={160}
-          height={160}
-          mx="auto"
-          style={{ objectFit: "fill" }}
-        />
+        <Center style={{ fontSize: "120px", marginBottom: "20px" }}>🦁</Center>
         <FocusTrap active>
           <Paper withBorder shadow="md" p="sm" radius="sm">
             {children}
@@ -42,17 +33,17 @@ export default function MerlinLayout({ children }: PropsWithChildren) {
             c="dimmed"
             onClick={() => toggleLeaderboard()}
           >
-            Leaderboard
+            Brave Hunters
           </Anchor>
           <Modal
             opened={leaderboardOpen}
             onClose={toggleLeaderboard}
-            title="People who beat Merlin"
+            title="Warriors who conquered the Lion"
             centered
           >
             <Leaderboard />
             <Text fz="sm" m="sm" c="dimmed">
-              The leaderboard was reset August 2024
+              Updated continuously
             </Text>
           </Modal>
         </Center>
@@ -62,7 +53,7 @@ export default function MerlinLayout({ children }: PropsWithChildren) {
 }
 
 function Leaderboard() {
-  const { getLeaderboard } = useMerlin();
+  const { getLeaderboard } = useLion();
   const leaderboard = useQuery({
     queryKey: ["leaderboard"],
     queryFn: getLeaderboard,
@@ -72,8 +63,8 @@ function Leaderboard() {
   return (
     <List>
       {leaderboard.data
-        .filter((it) => it.name)
-        .map((entry) => (
+        .filter((it: any) => it.name)
+        .map((entry: any) => (
           <List.Item key={entry.id}>
             <Group justify="space-between">
               <Text>

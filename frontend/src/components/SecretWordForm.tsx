@@ -1,35 +1,35 @@
 import { useForm } from "@mantine/form";
 import { Button, TextInput } from "@mantine/core";
 
-interface MerlinPasswordFormProps {
+interface SecretWordFormProps {
   disabled: boolean;
-  onSubmit: (prompt: string, reset: () => void) => void;
+  onSubmit: (word: string, reset: () => void) => void;
 }
 
-export function MerlinPasswordForm({
+export function SecretWordForm({
   disabled,
   onSubmit,
-}: MerlinPasswordFormProps) {
+}: SecretWordFormProps) {
   const form = useForm({
     initialValues: {
-      password: "",
+      word: "",
     },
     validate: {
-      password: (value) =>
-        value.length < 2 ? "Password must have at least 2 letters" : null,
+      word: (value) =>
+        value.length < 2 ? "Word must have at least 2 letters" : null,
     },
   });
   return (
     <form
       onSubmit={form.onSubmit((values) =>
-        onSubmit(values.password, form.reset),
+        onSubmit(values.word, form.reset),
       )}
     >
       <TextInput
-        label="Enter the secret password"
-        placeholder="SECRET PASSWORD"
+        label="Enter the secret word"
+        placeholder="SECRET WORD"
         styles={{ input: { textTransform: "uppercase" } }}
-        {...form.getInputProps("password")}
+        {...form.getInputProps("word")}
       />
       <Button
         disabled={disabled}
