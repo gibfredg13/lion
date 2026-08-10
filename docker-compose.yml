@@ -1,6 +1,27 @@
 version: '3.8'
 
 services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:17-alpine
+    container_name: hackmerlin-db
+    environment:
+      POSTGRES_DB: hackmerlin
+      POSTGRES_USER: hackmerlin
+      POSTGRES_PASSWORD: hackmerlin_secure_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - hackmerlin-network
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hackmerlin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # Main HackMerlin Application
   hackmerlin:
     build:
@@ -19,13 +40,19 @@ services:
       AZURE_OPENAI_DEPLOYMENT: ${AZURE_OPENAI_DEPLOYMENT:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL: jdbc:hsqldb:file:/app/data/hackmerlin;sql.syntax_pgs=true
-      SPRING_DATASOURCE_DRIVERCLASSNAME: org.hsqldb.jdbc.JDBCDriver
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/hackmerlin
+      SPRING_DATASOURCE_USERNAME: hackmerlin
+      SPRING_DATASOURCE_PASSWORD: hackmerlin_secure_password
+      SPRING_DATASOURCE_DRIVERCLASSNAME: org.postgresql.Driver
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
     volumes:
       - ./data:/data
     depends_on:
-      - ollama
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_started
     networks:
       - hackmerlin-network
     healthcheck:
@@ -57,5 +84,7 @@ networks:
     driver: bridge
 
 volumes:
+  postgres_data:
+    driver: local
   ollama_data:
     driver: local

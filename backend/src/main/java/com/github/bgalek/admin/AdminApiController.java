@@ -1,5 +1,6 @@
 package com.github.bgalek.admin;
 
+import com.github.bgalek.database.LoginHistoryRepository;
 import com.github.bgalek.llm.LlmProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,13 +23,15 @@ public class AdminApiController {
     private final AdminUserService adminUserService;
     private final AdminLlmService adminLlmService;
     private final AdminLeaderboardService adminLeaderboardService;
+    private final AdminLoginHistoryService adminLoginHistoryService;
     private final AnalyticsService analyticsService;
     private final AttackDetectionService attackDetectionService;
 
-    public AdminApiController(LlmProvider llmProvider) {
+    public AdminApiController(LlmProvider llmProvider, LoginHistoryRepository loginHistoryRepository) {
         this.adminUserService = new AdminUserService();
         this.adminLlmService = new AdminLlmService(llmProvider);
         this.adminLeaderboardService = new AdminLeaderboardService();
+        this.adminLoginHistoryService = new AdminLoginHistoryService(loginHistoryRepository);
         this.analyticsService = new AnalyticsService(List.of(), List.of(), List.of(), List.of());
         this.attackDetectionService = new AttackDetectionService();
     }
@@ -161,6 +164,22 @@ public class AdminApiController {
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Content-Disposition", "attachment; filename=ctf-data.json")
                 .body(jsonData);
+    }
+
+    @GetMapping("/login-history")
+    ResponseEntity<List<AdminLoginHistoryService.LoginHistoryResponse>> getLoginHistory(HttpSession session) {
+        if (!isAdmin(session)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin access required");
+        }
+        return ResponseEntity.ok(adminLoginHistoryService.getRecentLogins(50));
+    }
+
+    @GetMapping("/login-stats")
+    ResponseEntity<AdminLoginHistoryService.LoginStatsResponse> getLoginStats(HttpSession session) {
+        if (!isAdmin(session)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin access required");
+        }
+        return ResponseEntity.ok(adminLoginHistoryService.getLoginStats());
     }
 
     private boolean isAdmin(HttpSession session) {

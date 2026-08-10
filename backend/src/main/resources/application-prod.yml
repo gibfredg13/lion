@@ -6,8 +6,10 @@ spring:
     jdbc:
       initialize-schema: ALWAYS
   datasource:
-    url: jdbc:hsqldb:file:/app/data/hackmerlin;sql.syntax_pgs=true
-    driver-class-name: org.hsqldb.jdbc.JDBCDriver
+    url: jdbc:postgresql://postgres:5432/hackmerlin
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
     hikari:
       max-lifetime: 240000 # 4 minutes
   sql:
@@ -16,7 +18,15 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    database-platform: org.hibernate.dialect.HSQLDialect
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          batch_size: 20
+          fetch_size: 50
+        order_inserts: true
+        order_updates: true
 server:
   servlet:
     session:

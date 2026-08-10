@@ -1,6 +1,7 @@
 package com.github.bgalek.auth;
 
 import com.github.bgalek.database.User;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +20,8 @@ public class AuthenticationController {
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(
             @RequestBody RegisterRequest request,
-            HttpSession session) {
+            HttpSession session,
+            HttpServletRequest httpRequest) {
         try {
             if (request.email == null || request.email.isBlank()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email is required");
@@ -47,7 +49,8 @@ public class AuthenticationController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(
             @RequestBody LoginRequest request,
-            HttpSession session) {
+            HttpSession session,
+            HttpServletRequest httpRequest) {
         try {
             if (request.email == null || request.email.isBlank()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email is required");
@@ -56,7 +59,7 @@ public class AuthenticationController {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password is required");
             }
 
-            User user = authenticationService.login(request.email, request.password);
+            User user = authenticationService.login(request.email, request.password, httpRequest);
             
             session.setAttribute("userId", user.getId());
             session.setAttribute("email", user.getEmail());

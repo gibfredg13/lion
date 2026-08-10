@@ -18,9 +18,11 @@ interface LeaderboardStats {
 }
 
 const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'llm' | 'leaderboard' | 'analytics'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'llm' | 'leaderboard' | 'analytics' | 'login-history'>('dashboard');
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<LeaderboardStats | null>(null);
+  const [loginHistory, setLoginHistory] = useState<any[]>([]);
+  const [loginStats, setLoginStats] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -38,6 +40,15 @@ const AdminDashboard: React.FC = () => {
         const response = await fetch('/api/admin/leaderboard/stats', { credentials: "include" });
         const data = await response.json();
         setStats(data);
+      } else if (activeTab === 'login-history') {
+        const [historyRes, statsRes] = await Promise.all([
+          fetch('/api/admin/login-history', { credentials: "include" }),
+          fetch('/api/admin/login-stats', { credentials: "include" })
+        ]);
+        const historyData = await historyRes.json();
+        const statsData = await statsRes.json();
+        setLoginHistory(historyData);
+        setLoginStats(statsData);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -69,6 +80,12 @@ const AdminDashboard: React.FC = () => {
           👥 Users ({users.length})
         </button>
         <button
+          className={`nav-btn ${activeTab === 'login-history' ? 'active' : ''}`}
+          onClick={() => setActiveTab('login-history')}
+        >
+          🔐 Login History
+        </button>
+        <button
           className={`nav-btn ${activeTab === 'llm' ? 'active' : ''}`}
           onClick={() => setActiveTab('llm')}
         >
@@ -91,6 +108,7 @@ const AdminDashboard: React.FC = () => {
       <div className="admin-content">
         {activeTab === 'dashboard' && <DashboardTab stats={stats} users={users} />}
         {activeTab === 'users' && <UsersTab users={users} loading={loading} />}
+        {activeTab === 'login-history' && <LoginHistoryTab loginHistory={loginHistory} loginStats={loginStats} loading={loading} />}
         {activeTab === 'llm' && <LlmConfigTab />}
         {activeTab === 'leaderboard' && <LeaderboardTab stats={stats} loading={loading} />}
         {activeTab === 'analytics' && <Analytics />}
@@ -293,6 +311,57 @@ const LeaderboardTab: React.FC<{ stats: LeaderboardStats | null; loading: boolea
       <button className="reset-btn" onClick={() => alert('Reset leaderboard functionality')}>
         🔄 Reset Leaderboard
       </button>
+    </div>
+  );
+};
+
+const LoginHistoryTab: React.FC<{ loginHistory: any[]; loginStats: any; loading: boolean }> = ({ loginHistory, loginStats, loading }) => {
+  if (loading) return <div className="tab-content">Loading login history...</div>;
+
+  return (
+    <div className="tab-content login-history-tab">
+      <h2>🔐 Login History & Activity</h2>
+      
+      {loginStats && (
+        <div className="login-stats">
+          <div className="stat">
+            <h4>Logins Today</h4>
+            <p>{loginStats.loginsToday}</p>
+          </div>
+          <div className="stat">
+            <h4>Logins This Week</h4>
+            <p>{loginStats.loginsThisWeek}</p>
+          </div>
+          <div className="stat">
+            <h4>Logins This Month</h4>
+            <p>{loginStats.loginsThisMonth}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="login-history-table">
+        <h3>Recent Logins</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Login Time</th>
+              <th>IP Address</th>
+              <th>User Agent</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loginHistory.map((entry: any) => (
+              <tr key={entry.id}>
+                <td>{entry.email}</td>
+                <td>{new Date(entry.loginTime).toLocaleString()}</td>
+                <td>{entry.ipAddress || 'N/A'}</td>
+                <td className="user-agent">{entry.userAgent ? entry.userAgent.substring(0, 50) + '...' : 'N/A'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
