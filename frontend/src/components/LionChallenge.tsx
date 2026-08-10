@@ -2,19 +2,19 @@ import { useForm } from "@mantine/form";
 import { Button, Progress, Textarea, Title } from "@mantine/core";
 import { getHotkeyHandler } from "@mantine/hooks";
 
-interface MerlinPromptProps {
+interface LionChallengeProps {
   level: number;
   maxLevel: number;
   onSubmit: (prompt: string, reset: () => void) => void;
   disabled?: boolean;
 }
 
-export default function MerlinPrompt({
+export default function LionChallenge({
   level,
   maxLevel,
   onSubmit,
   disabled,
-}: MerlinPromptProps) {
+}: LionChallengeProps) {
   const form = useForm({
     initialValues: {
       prompt: "",
@@ -31,12 +31,12 @@ export default function MerlinPrompt({
 
   return (
     <form onSubmit={handleSubmit}>
-      <Title size="h4">Level {level}</Title>
+      <Title size="h4">Trial {level}</Title>
       <Progress mt="xs" value={(level / (maxLevel + 1)) * 100} size="xs" />
       <Textarea
         data-autofocus
         mt="sm"
-        placeholder="You can talk to merlin here..."
+        placeholder="Speak with the lion here..."
         withAsterisk
         maxLength={150}
         minRows={4}

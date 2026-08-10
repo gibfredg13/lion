@@ -1,6 +1,6 @@
 import { Blockquote, Skeleton, Stack, Text } from "@mantine/core";
 
-export default function MerlinResponse({
+export default function LionSpeak({
   isLoading,
   response,
 }: {
@@ -10,7 +10,7 @@ export default function MerlinResponse({
   return (
     <Blockquote
       style={{ height: 130, overflow: "auto" }}
-      cite="– Merlin"
+      cite="– The Great Lion"
       p="sm"
     >
       {isLoading ? (

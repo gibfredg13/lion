@@ -15,3 +15,5 @@ create table IF NOT EXISTS logs
     prompt      text not null,
     response    text not null
 );
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin boolean DEFAULT false;

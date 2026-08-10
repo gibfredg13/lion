@@ -36,6 +36,11 @@ public class AuthenticationService {
                 Instant.now()
         );
 
+        // Make the first user an admin
+        if (userRepository.count() == 0) {
+            user.setAdmin(true);
+        }
+
         return userRepository.save(user);
     }
 

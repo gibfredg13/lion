@@ -36,6 +36,8 @@ class MerlinApiController {
         
         String email = (String) session.getAttribute("email");
         String displayName = (String) session.getAttribute("displayName");
+        Object isAdminAttr = session.getAttribute("isAdmin");
+        boolean isAdmin = isAdminAttr != null ? (Boolean) isAdminAttr : false;
         
         return new MerlinSessionResponse(
                 session.getId(),
@@ -44,7 +46,8 @@ class MerlinApiController {
                 null,
                 displayName,
                 email,
-                displayName
+                displayName,
+                isAdmin
         );
     }
 
@@ -66,6 +69,8 @@ class MerlinApiController {
             String levelFinishedMessage = merlinService.advanceLevel(session);
             String email = (String) session.getAttribute("email");
             String displayName = (String) session.getAttribute("displayName");
+            Object isAdminAttr = session.getAttribute("isAdmin");
+            boolean isAdmin = isAdminAttr != null ? (Boolean) isAdminAttr : false;
             return ResponseEntity.ok(new MerlinSessionResponse(
                     session.getId(),
                     merlinService.getCurrentLevel(session),
@@ -73,7 +78,8 @@ class MerlinApiController {
                     levelFinishedMessage,
                     null,
                     email,
-                    displayName
+                    displayName,
+                    isAdmin
             ));
         }
         return ResponseEntity.badRequest().build();
@@ -115,14 +121,15 @@ class MerlinApiController {
             String finishedMessage,
             String submittedName,
             String email,
-            String displayName
+            String displayName,
+            boolean isAdmin
     ) {
         MerlinSessionResponse(String id, int currentLevel, int maxLevel, String finishedMessage) {
-            this(id, currentLevel, maxLevel, finishedMessage, null, null, null);
+            this(id, currentLevel, maxLevel, finishedMessage, null, null, null, false);
         }
 
         MerlinSessionResponse(String id, int currentLevel, int maxLevel, String finishedMessage, String submittedName) {
-            this(id, currentLevel, maxLevel, finishedMessage, submittedName, null, null);
+            this(id, currentLevel, maxLevel, finishedMessage, submittedName, null, null, false);
         }
     }
 

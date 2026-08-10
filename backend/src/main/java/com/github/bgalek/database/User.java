@@ -21,6 +21,9 @@ public class User {
     @Column(nullable = false)
     private String passwordHash;
     
+    @Column(nullable = false)
+    private boolean isAdmin = false;
+    
     private Instant createdAt;
     private Instant lastLoginAt;
 
@@ -33,12 +36,15 @@ public class User {
         this.passwordHash = passwordHash;
         this.createdAt = createdAt;
         this.lastLoginAt = lastLoginAt;
+        this.isAdmin = false;
     }
 
     public String getId() { return id; }
     public String getEmail() { return email; }
     public String getDisplayName() { return displayName; }
     public String getPasswordHash() { return passwordHash; }
+    public boolean isAdmin() { return isAdmin; }
+    public void setAdmin(boolean admin) { this.isAdmin = admin; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getLastLoginAt() { return lastLoginAt; }
 

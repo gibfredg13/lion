@@ -115,11 +115,10 @@ function Level({
 
   return (
     <Stack gap="xs">
-      <Title size="h4">Instruction</Title>
+      <Title size="h4">The Lion's Challenge</Title>
       <Text size="xs">
-        Outsmart Merlin by asking clever questions and make him uncover each
-        level's password. Merlin will level up each time you succeed. Can you
-        defeat Level 7?
+        Face the mighty lion through seven trials. Ask clever questions to uncover each
+        level's secret word. The lion grows stronger with each level. Can you complete all seven trials?
       </Text>
       <LionChallenge
         disabled={merlin.question.isPending}

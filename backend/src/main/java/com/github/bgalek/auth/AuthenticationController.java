@@ -36,8 +36,9 @@ public class AuthenticationController {
             session.setAttribute("userId", user.getId());
             session.setAttribute("email", user.getEmail());
             session.setAttribute("displayName", user.getDisplayName());
+            session.setAttribute("isAdmin", user.isAdmin());
             
-            return ResponseEntity.ok(new AuthResponse(user.getId(), user.getEmail(), user.getDisplayName(), true));
+            return ResponseEntity.ok(new AuthResponse(user.getId(), user.getEmail(), user.getDisplayName(), true, user.isAdmin()));
         } catch (AuthenticationService.AuthenticationException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
@@ -60,8 +61,9 @@ public class AuthenticationController {
             session.setAttribute("userId", user.getId());
             session.setAttribute("email", user.getEmail());
             session.setAttribute("displayName", user.getDisplayName());
+            session.setAttribute("isAdmin", user.isAdmin());
             
-            return ResponseEntity.ok(new AuthResponse(user.getId(), user.getEmail(), user.getDisplayName(), true));
+            return ResponseEntity.ok(new AuthResponse(user.getId(), user.getEmail(), user.getDisplayName(), true, user.isAdmin()));
         } catch (AuthenticationService.AuthenticationException e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, e.getMessage());
         }
@@ -82,12 +84,14 @@ public class AuthenticationController {
         
         String email = (String) session.getAttribute("email");
         String displayName = (String) session.getAttribute("displayName");
+        Object isAdminAttr = session.getAttribute("isAdmin");
+        boolean isAdmin = isAdminAttr != null ? (Boolean) isAdminAttr : false;
         
-        return ResponseEntity.ok(new UserResponse(userId, email, displayName));
+        return ResponseEntity.ok(new UserResponse(userId, email, displayName, isAdmin));
     }
 
     record LoginRequest(String email, String password) {}
     record RegisterRequest(String email, String displayName, String password) {}
-    record AuthResponse(String userId, String email, String displayName, boolean authenticated) {}
-    record UserResponse(String userId, String email, String displayName) {}
+    record AuthResponse(String userId, String email, String displayName, boolean authenticated, boolean isAdmin) {}
+    record UserResponse(String userId, String email, String displayName, boolean isAdmin) {}
 }

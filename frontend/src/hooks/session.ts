@@ -8,6 +8,7 @@ export interface MerlinSession {
   submittedName?: string;
   email?: string;
   displayName?: string;
+  isAdmin?: boolean;
 }
 
 export function useSession() {
