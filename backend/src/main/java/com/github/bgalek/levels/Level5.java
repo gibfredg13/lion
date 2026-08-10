@@ -5,9 +5,6 @@ import org.springframework.stereotype.Component;
 import java.util.Locale;
 import java.util.stream.Stream;
 
-/**
- * Output filter that ignores other than lowercase letters
- */
 @Component
 class Level5 extends Level4 {
     @Override

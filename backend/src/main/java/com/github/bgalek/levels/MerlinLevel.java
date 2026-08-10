@@ -1,12 +1,12 @@
 package com.github.bgalek.levels;
 
-import com.azure.ai.openai.models.ChatCompletionsOptions;
+import com.github.bgalek.llm.LlmRequest;
 
 public interface MerlinLevel {
 
     int getOrder();
 
-    ChatCompletionsOptions prompt(String prompt, String secret);
+    LlmRequest prompt(String prompt, String secret);
 
     default boolean outputFilter(String output, String secret) {
         return false;

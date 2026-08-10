@@ -10,9 +10,12 @@ server:
       cookie:
         max-age: 30d
 merlin:
-  azure:
-    key: key
-    url: https://hackmerlin-openai.openai.azure.com
+  llm:
+    provider: azure
+    apiKey: your-api-key
+    baseUrl: https://hackmerlin-openai.openai.azure.com
+    defaultModel: hackmerlin-gpt35
+    advancedModel: hackmerlin-gpt4
   passwords:
     - Scarlet
     - Stellar

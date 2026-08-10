@@ -1,9 +1,9 @@
 package com.github.bgalek;
 
-import com.azure.ai.openai.OpenAIClient;
+import com.github.bgalek.llm.LlmProvider;
+import com.github.bgalek.levels.MerlinLevel;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.bgalek.levels.MerlinLevel;
 import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 
@@ -19,7 +19,7 @@ import static org.slf4j.LoggerFactory.getLogger;
 
 class MerlinService {
     private static final Logger logger = getLogger(MerlinService.class);
-    private final OpenAIClient openAIClient;
+    private final LlmProvider llmProvider;
     private final MerlinLevelRepository merlinLevelRepository;
     private final MerlinLeaderboardRepository merlinLeaderboardRepository;
     private final MerlinLogger merlinLogger;
@@ -29,12 +29,12 @@ class MerlinService {
             .expireAfterWrite(Duration.ofMinutes(1))
             .build();
 
-    MerlinService(OpenAIClient openAIClient,
+    MerlinService(LlmProvider llmProvider,
                   MerlinLevelRepository merlinLevelRepository,
                   MerlinLeaderboardRepository merlinLeaderboardRepository,
                   MerlinLogger merlinLogger,
                   List<String> merlinPasswords) {
-        this.openAIClient = openAIClient;
+        this.llmProvider = llmProvider;
         this.merlinLevelRepository = merlinLevelRepository;
         this.merlinLeaderboardRepository = merlinLeaderboardRepository;
         this.merlinLogger = merlinLogger;
@@ -46,13 +46,7 @@ class MerlinService {
         if (level.inputFilter(prompt)) return level.inputFilterResponse();
         String currentSessionSecret = getCurrentSessionPassword(httpSession, currentLevel);
         return cache.get(getCacheKey(httpSession.getId(), currentLevel, prompt), key ->
-                openAIClient.getChatCompletions(level.getModel(), level.prompt(prompt, currentSessionSecret))
-                        .getChoices()
-                        .stream()
-                        .map(it -> it.getMessage().getContent())
-                        .findFirst()
-                        .filter(output -> !level.outputFilter(output, currentSessionSecret))
-                        .orElse(level.outputFilterResponse()));
+                llmProvider.chat(level.prompt(prompt, currentSessionSecret)).content());
     }
 
     boolean checkSecret(HttpSession httpSession, String secret) {
