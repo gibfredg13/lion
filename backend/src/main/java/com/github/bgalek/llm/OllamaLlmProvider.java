@@ -31,7 +31,7 @@ public class OllamaLlmProvider implements LlmProvider {
         try {
             List<Map<String, Object>> messages = new ArrayList<>();
             for (LlmMessage msg : request.messages()) {
-                if (msg instanceof LlmMessage.System system) {
+                if (msg instanceof LlmMessage.SystemMessage system) {
                     messages.add(Map.of("role", "system", "content", system.content()));
                 } else if (msg instanceof LlmMessage.User user) {
                     messages.add(Map.of("role", "user", "content", user.content()));
@@ -63,7 +63,7 @@ public class OllamaLlmProvider implements LlmProvider {
             // Ollama doesn't return token counts, estimate based on content
             int outputTokens = estimateTokens(content);
             int inputTokens = estimateTokens(request.messages().stream()
-                    .map(msg -> msg instanceof LlmMessage.System s ? s.content() : ((LlmMessage.User) msg).content())
+                    .map(msg -> msg instanceof LlmMessage.SystemMessage s ? s.content() : ((LlmMessage.User) msg).content())
                     .reduce("", (a, b) -> a + " " + b));
 
             return new LlmResponse(content, inputTokens, outputTokens);

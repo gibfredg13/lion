@@ -36,8 +36,8 @@ public class GeminiLlmProvider implements LlmProvider {
             List<Map<String, Object>> contents = new ArrayList<>();
             
             for (LlmMessage msg : request.messages()) {
-                String role = msg instanceof LlmMessage.System ? "user" : "user";
-                String text = msg instanceof LlmMessage.System system ? system.content() : ((LlmMessage.User) msg).content();
+                String role = "user";
+                String text = msg instanceof LlmMessage.SystemMessage system ? system.content() : ((LlmMessage.User) msg).content();
                 
                 contents.add(Map.of(
                         "role", role,

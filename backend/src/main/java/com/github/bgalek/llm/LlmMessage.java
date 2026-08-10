@@ -1,10 +1,11 @@
 package com.github.bgalek.llm;
 
-public sealed interface LlmMessage permits LlmMessage.System, LlmMessage.User {
+public sealed interface LlmMessage permits LlmMessage.SystemMessage, LlmMessage.User {
     
-    record System(String content) implements LlmMessage {
+    record SystemMessage(String content) implements LlmMessage {
     }
 
     record User(String content) implements LlmMessage {
     }
 }
+

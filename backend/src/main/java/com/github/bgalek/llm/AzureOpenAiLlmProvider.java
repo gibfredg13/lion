@@ -24,7 +24,7 @@ public class AzureOpenAiLlmProvider implements LlmProvider {
     public LlmResponse chat(LlmRequest request) {
         List<ChatRequestMessage> messages = new ArrayList<>();
         for (LlmMessage msg : request.messages()) {
-            if (msg instanceof LlmMessage.System system) {
+            if (msg instanceof LlmMessage.SystemMessage system) {
                 messages.add(new ChatRequestSystemMessage(system.content()));
             } else if (msg instanceof LlmMessage.User user) {
                 messages.add(new ChatRequestUserMessage(user.content()));
