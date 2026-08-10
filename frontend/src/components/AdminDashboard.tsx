@@ -31,11 +31,11 @@ const AdminDashboard: React.FC = () => {
     setLoading(true);
     try {
       if (activeTab === 'users') {
-        const response = await fetch('/api/admin/users');
+        const response = await fetch('/api/admin/users', { credentials: "include" });
         const data = await response.json();
         setUsers(data);
       } else if (activeTab === 'leaderboard' || activeTab === 'dashboard') {
-        const response = await fetch('/api/admin/leaderboard/stats');
+        const response = await fetch('/api/admin/leaderboard/stats', { credentials: "include" });
         const data = await response.json();
         setStats(data);
       }
@@ -181,7 +181,7 @@ const UsersTab: React.FC<{ users: User[]; loading: boolean }> = ({ users, loadin
 };
 
 const LlmConfigTab: React.FC = () => {
-  const [config, setConfig] = useState({ currentProvider: 'azure', currentModel: 'gpt-4' });
+  const [config] = useState({ currentProvider: 'azure', currentModel: 'gpt-4' });
   const [testPrompt, setTestPrompt] = useState('');
   const [testResult, setTestResult] = useState<any>(null);
   const [testing, setTesting] = useState(false);
@@ -192,6 +192,7 @@ const LlmConfigTab: React.FC = () => {
       const response = await fetch('/api/admin/llm/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: "include",
         body: JSON.stringify({
           prompt: testPrompt,
           systemPrompt: 'You are a helpful security-focused AI assistant.',

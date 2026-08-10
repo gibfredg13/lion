@@ -60,7 +60,7 @@ const RealtimeBreachDashboard: React.FC = () => {
 
   const fetchBreaches = async () => {
     try {
-      const response = await fetch('/api/realtime/breaches/recent/50');
+      const response = await fetch('/api/realtime/breaches/recent/50', { credentials: "include" });
       const data = await response.json();
       setBreaches(data);
     } catch (error) {
@@ -70,7 +70,7 @@ const RealtimeBreachDashboard: React.FC = () => {
 
   const fetchStatistics = async () => {
     try {
-      const response = await fetch('/api/realtime/statistics');
+      const response = await fetch('/api/realtime/statistics', { credentials: "include" });
       const data = await response.json();
       setStatistics(data);
     } catch (error) {
@@ -116,7 +116,7 @@ const RealtimeBreachDashboard: React.FC = () => {
     }
   };
 
-  const getBreach TypeColor = (type: string): string => {
+  const getBreachTypeColor = (type: string): string => {
     switch (type) {
       case 'OUTPUT_FILTER':
         return '#ff0000'; // Red - critical
@@ -242,7 +242,7 @@ const RealtimeBreachDashboard: React.FC = () => {
           {breaches.length === 0 ? (
             <div className="no-breaches">No breaches detected yet. Waiting for user attempts...</div>
           ) : (
-            breaches.map((breach, idx) => (
+            breaches.map((breach) => (
               <div key={breach.id} className={`breach-item severity-${getBreachTypeSeverity(breach.breachType).toLowerCase()}`}>
                 <div className="breach-header">
                   <div className="breach-meta">

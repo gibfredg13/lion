@@ -50,19 +50,19 @@ const Analytics: React.FC = () => {
     setLoading(true);
     try {
       if (activeTab === 'heatmap') {
-        const response = await fetch('/api/admin/analytics/attack-heatmap');
+        const response = await fetch('/api/admin/analytics/attack-heatmap', { credentials: "include" });
         const data = await response.json();
         setHeatmapData(data);
       } else if (activeTab === 'timeseries') {
-        const response = await fetch('/api/admin/analytics/token-usage-timeseries');
+        const response = await fetch('/api/admin/analytics/token-usage-timeseries', { credentials: "include" });
         const data = await response.json();
         setTimeseriesData(data);
       } else if (activeTab === 'users') {
-        const response = await fetch('/api/admin/analytics/token-usage-by-user');
+        const response = await fetch('/api/admin/analytics/token-usage-by-user', { credentials: "include" });
         const data = await response.json();
         setUsersData(data);
       } else if (activeTab === 'tricks') {
-        const response = await fetch('/api/admin/analytics/top-tricks');
+        const response = await fetch('/api/admin/analytics/top-tricks', { credentials: "include" });
         const data = await response.json();
         setTricksData(data);
       }
@@ -75,7 +75,7 @@ const Analytics: React.FC = () => {
 
   const exportData = async (format: 'csv' | 'json') => {
     try {
-      const response = await fetch(`/api/admin/export/${format}`);
+      const response = await fetch(`/api/admin/export/${format}`, { credentials: "include" });
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');

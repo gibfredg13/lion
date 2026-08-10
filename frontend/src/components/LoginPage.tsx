@@ -18,6 +18,7 @@ export default function LoginPage() {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       });
 
@@ -56,10 +57,10 @@ export default function LoginPage() {
           </Box>
 
           <Box
-            bg="white"
             p="xl"
-            radius="lg"
             style={{
+              backgroundColor: "white",
+              borderRadius: "8px",
               boxShadow: "0 10px 40px rgba(0,0,0,0.2)",
             }}
           >

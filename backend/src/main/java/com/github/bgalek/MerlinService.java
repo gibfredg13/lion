@@ -1,6 +1,7 @@
 package com.github.bgalek;
 
 import com.github.bgalek.llm.LlmProvider;
+import com.github.bgalek.llm.LlmRequest;
 import com.github.bgalek.levels.MerlinLevel;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -24,6 +25,7 @@ class MerlinService {
     private final MerlinLeaderboardRepository merlinLeaderboardRepository;
     private final MerlinLogger merlinLogger;
     private final List<String> merlinPasswords;
+    private final String defaultModel;
     private final Cache<String, String> cache = Caffeine.newBuilder()
             .maximumSize(500)
             .expireAfterWrite(Duration.ofMinutes(1))
@@ -33,20 +35,25 @@ class MerlinService {
                   MerlinLevelRepository merlinLevelRepository,
                   MerlinLeaderboardRepository merlinLeaderboardRepository,
                   MerlinLogger merlinLogger,
-                  List<String> merlinPasswords) {
+                  List<String> merlinPasswords,
+                  String defaultModel) {
         this.llmProvider = llmProvider;
         this.merlinLevelRepository = merlinLevelRepository;
         this.merlinLeaderboardRepository = merlinLeaderboardRepository;
         this.merlinLogger = merlinLogger;
         this.merlinPasswords = merlinPasswords;
+        this.defaultModel = defaultModel;
     }
 
     String respond(HttpSession httpSession, int currentLevel, String prompt) {
         MerlinLevel level = merlinLevelRepository.getLevel(currentLevel);
         if (level.inputFilter(prompt)) return level.inputFilterResponse();
         String currentSessionSecret = getCurrentSessionPassword(httpSession, currentLevel);
+        LlmRequest request = level.prompt(prompt, currentSessionSecret);
+        // Use configured model instead of level's default
+        LlmRequest configuredRequest = new LlmRequest(defaultModel, request.messages(), request.temperature(), request.maxTokens());
         return cache.get(getCacheKey(httpSession.getId(), currentLevel, prompt), key ->
-                llmProvider.chat(level.prompt(prompt, currentSessionSecret)).content());
+                llmProvider.chat(configuredRequest).content());
     }
 
     boolean checkSecret(HttpSession httpSession, String secret) {

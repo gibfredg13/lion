@@ -16,7 +16,7 @@ import RealtimeBreachDashboard from "./components/RealtimeBreachDashboard.tsx";
 import LoginPage from "./components/LoginPage.tsx";
 import RegisterPage from "./components/RegisterPage.tsx";
 import ProtectedRoute from "./components/ProtectedRoute.tsx";
-import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 export default function App() {
   return (
@@ -125,7 +125,7 @@ function Level({
         disabled={merlin.question.isPending}
         onSubmit={(prompt) => {
           merlin.question.mutate(prompt, {
-            onSuccess: (result) => {
+            onSuccess: (result: string) => {
               setResponse(result);
             },
           });
@@ -141,7 +141,7 @@ function Level({
         disabled={merlin.submit.isPending}
         onSubmit={(password, reset) => {
           merlin.submit.mutate(password, {
-            onSuccess: (result) => {
+            onSuccess: (result: MerlinSession) => {
               if (result.currentLevel < result.maxLevel) {
                 modals.open({
                   centered: true,

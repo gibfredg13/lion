@@ -8,7 +8,9 @@ interface ApiError {
   message?: string;
 }
 
-const api = wretch().customError<ApiError>(async (error, response) => {
+const api = wretch()
+  .options({ credentials: "include" })
+  .customError<ApiError>(async (error: any, response: any) => {
   const json = await response.json();
   return {
     title: json.error || error.response.statusText,

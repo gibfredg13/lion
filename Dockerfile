@@ -1,15 +1,24 @@
 # Multi-stage build for optimal image size
-FROM bellsoft/liberica-openjdk-alpine:21 AS builder
+FROM eclipse-temurin:21-jdk-jammy AS builder
 WORKDIR /build
+
+# Install Node.js and build tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    nodejs npm python3 build-essential git ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
 COPY . .
 RUN chmod +x ./gradlew && ./gradlew clean build -x test --no-daemon
 
 # Runtime stage
-FROM bellsoft/liberica-openjdk-alpine:21
+FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
 # Install curl for healthcheck
-RUN apk add --no-cache curl
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
+# Create data directory for SQLite
+RUN mkdir -p /app/data
 
 # Copy JAR from builder
 COPY --from=builder /build/build/libs/*.jar app.jar
@@ -28,10 +37,5 @@ ENTRYPOINT ["java", \
   "-Xms256M", \
   "-XX:+UseG1GC", \
   "-XX:MaxGCPauseMillis=200", \
-  "-XX:+UnlockExperimentalVMOptions", \
-  "-XX:G1NewCollectionPercentage=30", \
-  "-XX:G1MaxNewGenPercent=40", \
-  "-XX:InitialRAMPercentage=50.0", \
-  "-XX:MaxRAMPercentage=75.0", \
   "-Djava.awt.headless=true", \
   "-jar", "/app/app.jar"]

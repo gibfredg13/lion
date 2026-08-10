@@ -1,4 +1,4 @@
-import { Box, Button, Container, Group, PasswordInput, Stack, Text, TextInput, Title, Alert, Progress } from "@mantine/core";
+import { Box, Button, Container, Group, PasswordInput, Stack, Text, TextInput, Title, Alert } from "@mantine/core";
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
@@ -43,6 +43,7 @@ export default function RegisterPage() {
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, displayName, password }),
       });
 
@@ -81,10 +82,10 @@ export default function RegisterPage() {
           </Box>
 
           <Box
-            bg="white"
             p="xl"
-            radius="lg"
             style={{
+              backgroundColor: "white",
+              borderRadius: "8px",
               boxShadow: "0 10px 40px rgba(0,0,0,0.2)",
             }}
           >

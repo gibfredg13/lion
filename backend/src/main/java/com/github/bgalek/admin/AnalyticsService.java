@@ -76,7 +76,7 @@ public class AnalyticsService {
 
         return stats.values().stream()
                 .map(s -> new TokenUsageByUserResponse(s.displayName, s.email, s.promptCount, s.totalInputTokens, s.totalOutputTokens))
-                .sorted((a, b) -> Integer.compare(b.totalTokens, a.totalTokens))
+                .sorted((a, b) -> Integer.compare(b.inputTokens + b.outputTokens, a.inputTokens + a.outputTokens))
                 .collect(Collectors.toList());
     }
 

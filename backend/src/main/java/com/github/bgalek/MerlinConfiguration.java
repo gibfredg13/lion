@@ -63,17 +63,22 @@ class MerlinConfiguration {
                 merlinLevelRepository,
                 merlinLeaderboardRepository,
                 merlinLogger,
-                properties.passwords
+                properties.passwords,
+                properties.llm.defaultModel
         );
     }
 
     @Bean
-    @Profile("default")
-    WebMvcConfigurer corsConfigurer() {
+    WebMvcConfigurer corsConfigurer(MerlinConfigurationProperties properties) {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(@NonNull CorsRegistry corsRegistry) {
-                corsRegistry.addMapping("/api").allowedOrigins("http://localhost:3000");
+                corsRegistry.addMapping("/api/**")
+                        .allowedOriginPatterns("*")
+                        .allowedMethods("*")
+                        .allowedHeaders("*")
+                        .allowCredentials(true)
+                        .maxAge(3600);
             }
         };
     }

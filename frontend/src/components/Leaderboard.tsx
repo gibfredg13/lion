@@ -28,7 +28,7 @@ const Leaderboard: React.FC = () => {
       const url = filterLevel
         ? `/api/admin/leaderboard?level=${filterLevel}`
         : '/api/admin/leaderboard';
-      const response = await fetch(url);
+      const response = await fetch(url, { credentials: "include" });
       const data = await response.json();
       setLeaderboard(data);
     } catch (error) {

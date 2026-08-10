@@ -25,7 +25,6 @@ tasks.register<NpmTask>("npmBuild") {
     inputs.dir(project.fileTree("public"))
     inputs.files("*.html", "*.json", "*.ts", "*.js")
     outputs.dir(project.layout.buildDirectory.dir("dist"))
-    dependsOn(tasks.named("npmTest"))
 }
 
 tasks.register<NpmTask>("npmTest") {

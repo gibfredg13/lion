@@ -6,12 +6,140 @@ spring:
     jdbc:
       initialize-schema: ALWAYS
   datasource:
+    url: jdbc:hsqldb:file:/app/data/hackmerlin;sql.syntax_pgs=true
+    driver-class-name: org.hsqldb.jdbc.JDBCDriver
     hikari:
       max-lifetime: 240000 # 4 minutes
+  sql:
+    init:
+      mode: always
+  jpa:
+    hibernate:
+      ddl-auto: update
+    database-platform: org.hibernate.dialect.HSQLDialect
 server:
   servlet:
     session:
       cookie:
-        secure: true
+        secure: false
+        same-site: lax
+        http-only: true
   error:
     include-message: never
+merlin:
+  llm:
+    provider: ollama
+    baseUrl: http://ollama:11434
+    defaultModel: llama2
+    advancedModel: llama2
+  passwords:
+    - Scarlet
+    - Stellar
+    - Whiskers
+    - Lagoon
+    - Harmony
+    - Thunder
+    - Willow
+    - Blossom
+    - Saffron
+    - Velvet
+    - Serene
+    - Twilight
+    - Mosaic
+    - Breeze
+    - Pebbles
+    - Jade
+    - Radiant
+    - Glimmer
+    - Flamingo
+    - Nimbus
+    - Marigold
+    - Wander
+    - Aurora
+    - Luminary
+    - Misty
+    - Tropic
+    - Ember
+    - Enigma
+    - Zephyr
+    - Poppies
+    - Mirage
+    - Tundra
+    - Quasar
+    - Aquatic
+    - Zinnia
+    - Symphony
+    - Glitter
+    - Bliss
+    - Whisper
+    - Coral
+    - Opal
+    - Cascade
+    - Gossamer
+    - Azure
+    - Jubilee
+    - Reverie
+    - Solace
+    - Elysian
+    - Puzzle
+    - Lemon
+    - Helmet
+    - Breeze
+    - Ticket
+    - Turtle
+    - Wallet
+    - Orange
+    - Bakery
+    - Circus
+    - Hammer
+    - Juggle
+    - Zipper
+    - Muffin
+    - Cherry
+    - Planet
+    - Rocket
+    - Father
+    - Camera
+    - Castle
+    - Ginger
+    - Basket
+    - Forest
+    - Dolphin
+    - Friend
+    - Guitar
+    - Icebox
+    - Jaguar
+    - Lizard
+    - Mosaic
+    - Needle
+    - Outlet
+    - Pirate
+    - Rabbit
+    - Singer
+    - Travel
+    - Walnut
+    - Window
+    - Yellow
+    - Anchor
+    - Bumble
+    - Candle
+    - Dancer
+    - Fabric
+    - Goblet
+    - Hammer
+    - Insect
+    - Jacket
+    - Kitchen
+    - Locket
+    - Marvel
+    - Nimble
+    - Oyster
+    - Parrot
+    - Quiver
+    - Racket
+    - Saddle
+    - Thumbs
+    - Umbrella
+    - Velvet
+    - Waffle
+    - Zenith

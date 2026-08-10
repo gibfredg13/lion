@@ -7,6 +7,7 @@ dependencies {
     implementation(platform(libs.spring.boot.dependencies))
     errorprone(libs.error.prone)
     implementation(libs.spring.boot.starter.web)
+    implementation(libs.spring.boot.starter.websocket)
     implementation(libs.spring.session.jdbc)
     implementation(libs.spring.boot.starter.jdbc)
     implementation(libs.spring.boot.starter.data.jpa)

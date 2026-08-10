@@ -11,7 +11,7 @@ const Navigation: React.FC = () => {
   const isActive = (path: string): boolean => location.pathname === path;
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    await fetch('/api/auth/logout', { method: 'POST', credentials: "include" });
     navigate('/login');
   };
 

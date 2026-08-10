@@ -7,13 +7,16 @@ micrometer = "1.14.2"
 sentry = "7.20.0"
 spring-boot = "3.4.1"
 spring-security = "6.4.1"
+h2 = "2.2.224"
 
 [libraries]
 azure-ai-openai = { module = "com.azure:azure-ai-openai", version.ref = "azure-ai-openai" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
+h2 = { module = "com.h2database:h2", version.ref = "h2" }
 hsqldb = { module = "org.hsqldb:hsqldb" }
 micrometer-registry-prometheus = { module = "io.micrometer:micrometer-registry-prometheus", version.ref = "micrometer" }
 postgresql = { module = "org.postgresql:postgresql" }
+sqlite = { module = "org.xerial:sqlite-jdbc", version = "3.44.0.0" }
 sentry-spring-boot-starter = { module = "io.sentry:sentry-spring-boot-starter-jakarta", version.ref = "sentry" }
 spring-boot-dependencies = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
 spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
@@ -22,6 +25,7 @@ spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-start
 spring-session-jdbc = { module = "org.springframework.session:spring-session-jdbc" }
 spring-security-crypto = { module = "org.springframework.security:spring-security-crypto", version.ref = "spring-security" }
 spring-boot-starter-data-jpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa" }
+spring-boot-starter-websocket = { module = "org.springframework.boot:spring-boot-starter-websocket" }
 error-prone = { module = "com.google.errorprone:error_prone_core", version.ref = "error-prone-core" }
 
 [plugins]

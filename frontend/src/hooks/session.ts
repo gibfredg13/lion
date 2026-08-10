@@ -13,6 +13,6 @@ export interface MerlinSession {
 export function useSession() {
   return useQuery<MerlinSession>({
     queryKey: ["session"],
-    queryFn: () => fetch("/api/user").then((response) => response.json()),
+    queryFn: () => fetch("/api/user", { credentials: "include" }).then((response) => response.json()),
   });
 }
