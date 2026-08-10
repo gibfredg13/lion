@@ -29,12 +29,22 @@ class MerlinApiController {
 
     @GetMapping(value = "/user")
     MerlinSessionResponse level(HttpSession session) {
+        String userId = (String) session.getAttribute("userId");
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not authenticated");
+        }
+        
+        String email = (String) session.getAttribute("email");
+        String displayName = (String) session.getAttribute("displayName");
+        
         return new MerlinSessionResponse(
                 session.getId(),
                 merlinService.getCurrentLevel(session),
                 merlinService.getMaxLevel(),
                 null,
-                Optional.ofNullable(session.getAttribute("submittedName")).map(Object::toString).orElse(null)
+                displayName,
+                email,
+                displayName
         );
     }
 
@@ -54,11 +64,16 @@ class MerlinApiController {
         if (password.isBlank()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password is required");
         if (merlinService.checkSecret(session, password)) {
             String levelFinishedMessage = merlinService.advanceLevel(session);
+            String email = (String) session.getAttribute("email");
+            String displayName = (String) session.getAttribute("displayName");
             return ResponseEntity.ok(new MerlinSessionResponse(
                     session.getId(),
                     merlinService.getCurrentLevel(session),
                     merlinService.getMaxLevel(),
-                    levelFinishedMessage
+                    levelFinishedMessage,
+                    null,
+                    email,
+                    displayName
             ));
         }
         return ResponseEntity.badRequest().build();
@@ -98,10 +113,16 @@ class MerlinApiController {
             int currentLevel,
             int maxLevel,
             String finishedMessage,
-            String submittedName
+            String submittedName,
+            String email,
+            String displayName
     ) {
         MerlinSessionResponse(String id, int currentLevel, int maxLevel, String finishedMessage) {
-            this(id, currentLevel, maxLevel, finishedMessage, null);
+            this(id, currentLevel, maxLevel, finishedMessage, null, null, null);
+        }
+
+        MerlinSessionResponse(String id, int currentLevel, int maxLevel, String finishedMessage, String submittedName) {
+            this(id, currentLevel, maxLevel, finishedMessage, submittedName, null, null);
         }
     }
 

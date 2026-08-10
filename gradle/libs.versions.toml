@@ -6,6 +6,7 @@ error-prone-core = "2.36.0"
 micrometer = "1.14.2"
 sentry = "7.20.0"
 spring-boot = "3.4.1"
+spring-security = "6.4.1"
 
 [libraries]
 azure-ai-openai = { module = "com.azure:azure-ai-openai", version.ref = "azure-ai-openai" }
@@ -19,6 +20,8 @@ spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-
 spring-boot-starter-jdbc = { module = "org.springframework.boot:spring-boot-starter-jdbc" }
 spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web" }
 spring-session-jdbc = { module = "org.springframework.session:spring-session-jdbc" }
+spring-security-crypto = { module = "org.springframework.security:spring-security-crypto", version.ref = "spring-security" }
+spring-boot-starter-data-jpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa" }
 error-prone = { module = "com.google.errorprone:error_prone_core", version.ref = "error-prone-core" }
 
 [plugins]

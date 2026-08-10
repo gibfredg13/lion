@@ -12,15 +12,50 @@ import MerlinCongratulations from "./components/MerlinCongratulations.tsx";
 import { modals } from "@mantine/modals";
 import AdminDashboard from "./components/AdminDashboard.tsx";
 import Leaderboard from "./components/Leaderboard.tsx";
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from "react-router-dom";
+import RealtimeBreachDashboard from "./components/RealtimeBreachDashboard.tsx";
+import LoginPage from "./components/LoginPage.tsx";
+import RegisterPage from "./components/RegisterPage.tsx";
+import ProtectedRoute from "./components/ProtectedRoute.tsx";
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
 
 export default function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<MainApp />} />
-        <Route path="/admin" element={<AdminApp />} />
-        <Route path="/leaderboard" element={<LeaderboardApp />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <MainApp />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminApp />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/breaches"
+          element={
+            <ProtectedRoute>
+              <BreachesApp />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/leaderboard"
+          element={
+            <ProtectedRoute>
+              <LeaderboardApp />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </Router>
   );
@@ -41,6 +76,10 @@ function MainApp() {
 
 function AdminApp() {
   return <AdminDashboard />;
+}
+
+function BreachesApp() {
+  return <RealtimeBreachDashboard />;
 }
 
 function LeaderboardApp() {

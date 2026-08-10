@@ -6,6 +6,8 @@ export interface MerlinSession {
   maxLevel: number;
   finishedMessage?: string;
   submittedName?: string;
+  email?: string;
+  displayName?: string;
 }
 
 export function useSession() {
