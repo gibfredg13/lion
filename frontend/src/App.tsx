@@ -10,8 +10,23 @@ import { useQueryClient } from "@tanstack/react-query";
 import MerlinLoader from "./components/MerlinLoader.tsx";
 import MerlinCongratulations from "./components/MerlinCongratulations.tsx";
 import { modals } from "@mantine/modals";
+import AdminDashboard from "./components/AdminDashboard.tsx";
+import Leaderboard from "./components/Leaderboard.tsx";
+import { BrowserRouter as Router, Routes, Route, Link, useLocation } from "react-router-dom";
 
 export default function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<MainApp />} />
+        <Route path="/admin" element={<AdminApp />} />
+        <Route path="/leaderboard" element={<LeaderboardApp />} />
+      </Routes>
+    </Router>
+  );
+}
+
+function MainApp() {
   const session = useSession();
   if (session.isLoading || !session.data) return <MerlinLoader />;
   return (
@@ -22,6 +37,14 @@ export default function App() {
       />
     </MerlinLayout>
   );
+}
+
+function AdminApp() {
+  return <AdminDashboard />;
+}
+
+function LeaderboardApp() {
+  return <Leaderboard />;
 }
 
 function Level({

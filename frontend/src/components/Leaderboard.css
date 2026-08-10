@@ -1,0 +1,335 @@
+/* Leaderboard - Orange ING Branding */
+
+.leaderboard-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%);
+}
+
+.leaderboard-header {
+  background: linear-gradient(135deg, #ff6600 0%, #ff8533 100%);
+  color: white;
+  padding: 50px 20px;
+  text-align: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.header-content h1 {
+  margin: 0;
+  font-size: 40px;
+  font-weight: 700;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.header-content p {
+  margin: 8px 0 0 0;
+  font-size: 18px;
+  opacity: 0.95;
+}
+
+.leaderboard-filters {
+  display: flex;
+  gap: 10px;
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  justify-content: center;
+  flex-wrap: wrap;
+  background: white;
+  border-bottom: 2px solid #ff6600;
+}
+
+.filter-btn {
+  padding: 10px 20px;
+  border: 2px solid #ff6600;
+  background: white;
+  color: #ff6600;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  font-size: 14px;
+}
+
+.filter-btn:hover {
+  background: #ff6600;
+  color: white;
+  transform: translateY(-2px);
+}
+
+.filter-btn.active {
+  background: #ff6600;
+  color: white;
+  box-shadow: 0 4px 12px rgba(255, 102, 0, 0.3);
+}
+
+.leaderboard-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.loading,
+.empty {
+  text-align: center;
+  padding: 60px 20px;
+  font-size: 18px;
+  color: #666;
+}
+
+.leaderboard-table-wrapper {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 2px solid #ff6600;
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.leaderboard-table thead {
+  background: linear-gradient(135deg, #ff6600 0%, #ff8533 100%);
+  color: white;
+  font-weight: 600;
+}
+
+.leaderboard-table th {
+  padding: 16px;
+  text-align: left;
+  border-bottom: 3px solid #ff6600;
+}
+
+.leaderboard-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.leaderboard-table tbody tr {
+  transition: all 0.2s ease;
+}
+
+.leaderboard-table tbody tr:hover {
+  background: #fff9f4;
+}
+
+/* Rank styling */
+.leaderboard-table tbody tr.rank-1 {
+  background: linear-gradient(90deg, rgba(255, 215, 0, 0.05) 0%, transparent 100%);
+}
+
+.leaderboard-table tbody tr.rank-1:hover {
+  background: rgba(255, 215, 0, 0.1);
+}
+
+.leaderboard-table tbody tr.rank-2 {
+  background: linear-gradient(90deg, rgba(192, 192, 192, 0.05) 0%, transparent 100%);
+}
+
+.leaderboard-table tbody tr.rank-2:hover {
+  background: rgba(192, 192, 192, 0.1);
+}
+
+.leaderboard-table tbody tr.rank-3 {
+  background: linear-gradient(90deg, rgba(205, 127, 50, 0.05) 0%, transparent 100%);
+}
+
+.leaderboard-table tbody tr.rank-3:hover {
+  background: rgba(205, 127, 50, 0.1);
+}
+
+.rank-col {
+  width: 80px;
+  font-weight: 700;
+}
+
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, #ff6600 0%, #ff8533 100%);
+  color: white;
+  border-radius: 50%;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.name-col {
+  min-width: 150px;
+}
+
+.name-text {
+  font-weight: 600;
+  color: #333;
+}
+
+.email-col {
+  color: #ff6600;
+  font-size: 14px;
+  min-width: 200px;
+}
+
+.level-col {
+  text-align: center;
+}
+
+.level-badge {
+  display: inline-block;
+  background: #ff6600;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.time-col {
+  font-weight: 600;
+  color: #ff6600;
+}
+
+.tokens-col {
+  font-weight: 600;
+  color: #666;
+}
+
+.date-col {
+  color: #999;
+  font-size: 14px;
+}
+
+/* Stats Section */
+.leaderboard-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-top: 40px;
+}
+
+.stat-card {
+  background: white;
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid #ff6600;
+  text-align: center;
+  transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.stat-card h4 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.stat-card p {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+  color: #ff6600;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .leaderboard-table {
+    font-size: 14px;
+  }
+
+  .leaderboard-table th,
+  .leaderboard-table td {
+    padding: 12px;
+  }
+
+  .email-col {
+    min-width: 150px;
+  }
+}
+
+@media (max-width: 768px) {
+  .header-content h1 {
+    font-size: 28px;
+  }
+
+  .leaderboard-filters {
+    padding: 15px;
+  }
+
+  .filter-btn {
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+
+  .leaderboard-table {
+    font-size: 12px;
+  }
+
+  .leaderboard-table th,
+  .leaderboard-table td {
+    padding: 10px;
+  }
+
+  .rank-col {
+    width: 60px;
+  }
+
+  .rank-badge {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+
+  .email-col {
+    display: none;
+  }
+
+  .date-col {
+    display: none;
+  }
+
+  .leaderboard-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-content h1 {
+    font-size: 22px;
+  }
+
+  .leaderboard-filters {
+    gap: 8px;
+  }
+
+  .filter-btn {
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+
+  .leaderboard-table {
+    font-size: 11px;
+  }
+
+  .leaderboard-table th,
+  .leaderboard-table td {
+    padding: 8px;
+  }
+
+  .name-col {
+    min-width: 100px;
+  }
+
+  .level-badge {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+}

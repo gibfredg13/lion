@@ -25,12 +25,14 @@
     "react": "^19.2.7",
     "react-confetti-explosion": "^3.0.3",
     "react-dom": "^19.2.7",
+    "react-router-dom": "^6.21.3",
     "wretch": "^3.0.9"
   },
   "devDependencies": {
     "@tanstack/eslint-plugin-query": "^5.101.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "@types/react-router-dom": "^5.3.3",
     "@typescript-eslint/eslint-plugin": "^8.62.1",
     "@typescript-eslint/parser": "^8.19.1",
     "@vitejs/plugin-react": "^6.0.3",

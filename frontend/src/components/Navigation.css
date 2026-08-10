@@ -1,0 +1,103 @@
+/* Navigation - Orange ING Branding */
+
+.ing-navigation {
+  background: linear-gradient(135deg, #ff6600 0%, #ff8533 100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.nav-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 70px;
+}
+
+.nav-logo {
+  color: white;
+  text-decoration: none;
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: transform 0.3s ease;
+}
+
+.nav-logo:hover {
+  transform: scale(1.05);
+}
+
+.nav-links {
+  display: flex;
+  gap: 30px;
+  align-items: center;
+}
+
+.nav-link {
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 15px;
+  padding: 8px 16px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.nav-link:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.nav-link.active {
+  background: rgba(255, 255, 255, 0.2);
+  border-bottom: 3px solid white;
+}
+
+.nav-link.admin-link {
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.nav-link.admin-link:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: white;
+}
+
+.nav-link.admin-link.active {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: white;
+  border-bottom: 3px solid white;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .nav-container {
+    flex-direction: column;
+    gap: 10px;
+    height: auto;
+    padding: 10px 20px;
+  }
+
+  .nav-logo {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+
+  .nav-links {
+    gap: 15px;
+    width: 100%;
+    justify-content: space-around;
+  }
+
+  .nav-link {
+    font-size: 13px;
+    padding: 6px 12px;
+  }
+}
