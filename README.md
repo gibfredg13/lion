@@ -16,25 +16,35 @@ See `docs/SYSTEM_OVERVIEW.txt` for complete overview.
 hackmerlin.io/
 ├── backend/              # Spring Boot + Java 21
 ├── frontend/             # React + TypeScript + Vite
-├── docs/                 # Complete documentation (15+ guides)
+├── docs/                 # Complete documentation (17 guides)
 ├── Dockerfile            # Multi-stage Docker build
-├── docker-compose.yml    # Orchestration
-└── LAUNCH.sh             # Automated setup script
+└── docker-compose.yml    # Full orchestration (app + Ollama)
 ```
 
 ## 🚀 Quick Start
 
-### Option 1: Docker (Recommended)
+### Everything Runs in Containers
+
 ```bash
+# Build and start all services
 docker-compose up -d
+
+# Access application
 open http://localhost:8080
+
+# View logs
+docker-compose logs -f hackmerlin-app
+
+# Stop all services
+docker-compose down
 ```
 
-### Option 2: Local Development (requires Java 21)
-```bash
-./gradlew bootRun       # Backend on :8080
-cd frontend && npm run dev  # Frontend on :3000
-```
+**That's it!** Everything runs in Docker:
+- ✅ Backend (Spring Boot)
+- ✅ Frontend (React + Vite)
+- ✅ Database (SQLite in `/data` volume)
+- ✅ Ollama (Local LLM)
+- ✅ All configured automatically
 
 ## 📚 Documentation
 
