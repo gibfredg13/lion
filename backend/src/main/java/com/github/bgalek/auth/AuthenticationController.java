@@ -33,12 +33,14 @@ public class AuthenticationController {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password is required");
             }
 
-            User user = authenticationService.register(request.email, request.displayName, request.password);
+            User user = authenticationService.register(request.email, request.displayName, request.password, request.accessCode);
             
             session.setAttribute("userId", user.getId());
             session.setAttribute("email", user.getEmail());
             session.setAttribute("displayName", user.getDisplayName());
             session.setAttribute("isAdmin", user.isAdmin());
+            // Fix 3: Restore persisted level from DB so progress survives logout
+            session.setAttribute("level", user.getCurrentLevel());
             
             return ResponseEntity.ok(new AuthResponse(user.getId(), user.getEmail(), user.getDisplayName(), true, user.isAdmin()));
         } catch (AuthenticationService.AuthenticationException e) {
@@ -65,6 +67,8 @@ public class AuthenticationController {
             session.setAttribute("email", user.getEmail());
             session.setAttribute("displayName", user.getDisplayName());
             session.setAttribute("isAdmin", user.isAdmin());
+            // Fix 3: Restore persisted level from DB so progress survives logout
+            session.setAttribute("level", user.getCurrentLevel());
             
             return ResponseEntity.ok(new AuthResponse(user.getId(), user.getEmail(), user.getDisplayName(), true, user.isAdmin()));
         } catch (AuthenticationService.AuthenticationException e) {
@@ -94,7 +98,7 @@ public class AuthenticationController {
     }
 
     record LoginRequest(String email, String password) {}
-    record RegisterRequest(String email, String displayName, String password) {}
+    record RegisterRequest(String email, String displayName, String password, String accessCode) {}
     record AuthResponse(String userId, String email, String displayName, boolean authenticated, boolean isAdmin) {}
     record UserResponse(String userId, String email, String displayName, boolean isAdmin) {}
 }

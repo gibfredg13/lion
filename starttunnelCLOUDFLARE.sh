@@ -1,0 +1,9 @@
+echo removing old containers
+docker rm lionsden-userportal
+docker rm lionsden-adminportal
+
+echo starting cloudflare tunnel
+
+docker run -d --name lionsden-adminportal cloudflare/cloudflared:latest tunnel --no-autoupdate run --token eyJhIjoiYjEyZjM0YTA3NjQ1ZjU2MjkwODEyYTQ1ZDMyYWRkMzQiLCJ0IjoiM2Y5MzhlY2UtOWQwMS00NzAwLTlkMDItMDZjY2VmOTg4ZTA5IiwicyI6Ik1qQTVOR013WkRJdE1UQmtNaTAwT1RSbUxUZzBZVFV0TldaaU5tUTBNMlUyT0dOaSJ9
+
+docker run -d --name lionsden-userportal cloudflare/cloudflared:latest tunnel --no-autoupdate run --token eyJhIjoiYjEyZjM0YTA3NjQ1ZjU2MjkwODEyYTQ1ZDMyYWRkMzQiLCJ0IjoiNzQ1YWM2YTktMzBkNC00NDE3LTk2YjgtYWUwZmY4ZmFmMTMzIiwicyI6Ik4yWTFNREJsWVRrdFpqTXdPQzAwWmpRekxUaGlPR010TldFM04yVmpOV1JsT0RnNSJ9

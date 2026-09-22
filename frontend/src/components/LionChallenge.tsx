@@ -1,6 +1,6 @@
 import { useForm } from "@mantine/form";
 import { Button, Progress, Textarea, Title } from "@mantine/core";
-import { getHotkeyHandler } from "@mantine/hooks";
+import { getHotkeyHandler, useMediaQuery } from "@mantine/hooks";
 
 interface LionChallengeProps {
   level: number;
@@ -29,24 +29,40 @@ export default function LionChallenge({
     onSubmit(values.prompt, form.reset),
   );
 
+  /**
+   * On a soft keyboard Enter is the newline key, so submitting on it makes the box impossible to
+   * write more than one line in. Phones keep mod+Enter and the full-width Ask button.
+   */
+  const isDesktop = useMediaQuery("(min-width: 48em)", false, {
+    // Read matchMedia on the first render instead of in an effect. There is no SSR here, and
+    // deferring it flashes the phone layout for a frame on every desktop load.
+    getInitialValueInEffect: false,
+  });
+
   return (
     <form onSubmit={handleSubmit}>
       <Title size="h4">Trial {level}</Title>
-      <Progress mt="xs" value={(level / (maxLevel + 1)) * 100} size="xs" />
+      <Progress mt="xs" value={(level / (maxLevel + 1)) * 100} size="xs" color="orange" />
       <Textarea
         data-autofocus
         mt="sm"
         placeholder="Speak with the lion here..."
         withAsterisk
         maxLength={150}
-        minRows={4}
-        onKeyDown={getHotkeyHandler([
-          ["mod+Enter", () => handleSubmit()],
-          ["Enter", () => handleSubmit()],
-        ])}
+        autosize
+        minRows={2}
+        maxRows={5}
+        onKeyDown={getHotkeyHandler(
+          isDesktop
+            ? [
+                ["mod+Enter", () => handleSubmit()],
+                ["Enter", () => handleSubmit()],
+              ]
+            : [["mod+Enter", () => handleSubmit()]],
+        )}
         {...form.getInputProps("prompt")}
       />
-      <Button disabled={disabled} type="submit" fullWidth mt="sm">
+      <Button disabled={disabled} type="submit" fullWidth mt="sm" color="orange">
         Ask
       </Button>
     </form>

@@ -1,27 +1,24 @@
 package com.github.bgalek;
 
+import com.github.bgalek.levels.LevelDefinitionService;
 import com.github.bgalek.levels.MerlinLevel;
 
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
+/**
+ * Reads levels through {@link LevelDefinitionService} rather than holding its own map, so a level
+ * edited at runtime takes effect on the next request instead of the next restart.
+ */
 class MerlinLevelRepository {
-    private final Map<Integer, MerlinLevel> levels;
+    private final LevelDefinitionService levelDefinitionService;
 
-    MerlinLevelRepository(List<MerlinLevel> levels) {
-        this.levels = levels.stream().collect(Collectors.toMap(MerlinLevel::getOrder, Function.identity()));
+    MerlinLevelRepository(LevelDefinitionService levelDefinitionService) {
+        this.levelDefinitionService = levelDefinitionService;
     }
 
     MerlinLevel getLevel(int level) {
-        if (level < 1 || level > levels.size()) {
-            throw new IllegalArgumentException("Level %d does not exist".formatted(level));
-        }
-        return levels.get(level);
+        return levelDefinitionService.get(level);
     }
 
     int count() {
-        return levels.size();
+        return levelDefinitionService.count();
     }
 }

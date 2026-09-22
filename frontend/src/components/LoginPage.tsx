@@ -38,7 +38,9 @@ export default function LoginPage() {
   return (
     <Box
       style={{
-        minHeight: "100vh",
+        // dvh, not vh: on iOS/Android the URL bar makes 100vh taller than the visible viewport,
+        // which pushed the submit button off the bottom of the screen.
+        minHeight: "100dvh",
         background: "linear-gradient(135deg, #ff8c00 0%, #ff6b00 100%)",
         display: "flex",
         alignItems: "center",
@@ -52,12 +54,12 @@ export default function LoginPage() {
               🦁 Lion's Quest
             </Title>
             <Text c="white" size="lg">
-              Challenge Your Courage
+              Enter The Lion's Den
             </Text>
           </Box>
 
           <Box
-            p="xl"
+            p={{ base: "md", sm: "xl" }}
             style={{
               backgroundColor: "white",
               borderRadius: "8px",

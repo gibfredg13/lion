@@ -14,10 +14,18 @@ class MerlinLeaderboardRepository {
         this.jdbcClient = jdbcClient;
     }
 
-    void addEntry(String session, Instant sessionStart) {
-        this.jdbcClient.sql("INSERT INTO leaderboard (session, started_at) VALUES (:session, :startedAt)")
+    /**
+     * Records a completion. `name` must be supplied: the column is NOT NULL, and the original
+     * insert omitted it, so every completion row was rejected and silently swallowed by the
+     * caller's try/catch - which is why the leaderboard was always empty.
+     */
+    void addEntry(String userId, String session, String name, Instant sessionStart, String gameSessionId) {
+        this.jdbcClient.sql("INSERT INTO leaderboard (user_id, session, name, started_at, game_session_id) VALUES (:userId, :session, :name, :startedAt, :gameSessionId)")
+                .param("userId", userId, Types.VARCHAR)
                 .param("session", session, Types.VARCHAR)
+                .param("name", name == null || name.isBlank() ? "Anonymous" : name, Types.VARCHAR)
                 .param("startedAt", Timestamp.from(sessionStart), Types.TIMESTAMP)
+                .param("gameSessionId", gameSessionId, Types.VARCHAR)
                 .update();
     }
 
@@ -28,9 +36,11 @@ class MerlinLeaderboardRepository {
                 .update();
     }
 
-    Set<MerlinService.LeaderboardEntry> getLeaderboard() {
+    Set<MerlinService.LeaderboardEntry> getLeaderboard(String gameSessionId) {
         return this.jdbcClient
-                .sql("SELECT * FROM leaderboard ORDER BY finished_at LIMIT 100")
+                .sql("SELECT * FROM leaderboard WHERE game_session_id = :gameSessionId "
+                        + "ORDER BY finished_at LIMIT 100")
+                .param("gameSessionId", gameSessionId, Types.VARCHAR)
                 .query((rs, rowNum) -> new MerlinService.LeaderboardEntry(
                         rs.getString("session"),
                         rs.getString("name"),

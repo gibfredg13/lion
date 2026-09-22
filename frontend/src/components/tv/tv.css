@@ -1,0 +1,181 @@
+/*
+ * The projector stylesheet. Every rule is scoped under .tv-root on purpose: the rest of this
+ * frontend is light-themed (see Leaderboard.css - white background, 15px type), and an unscoped
+ * dark rule would bleed into it.
+ *
+ * The palette deliberately reuses the admin dashboard's variable names so the two dark surfaces
+ * share one vocabulary, plus --tv-text-dim, which that file inlines about twenty times without
+ * ever giving it a name.
+ */
+.tv-root {
+  --tv-bg: #0d0d1a;
+  --tv-surface: #1a1a2e;
+  --tv-orange: #ff6600;
+  --tv-orange-light: #ff8c00;
+  --tv-text: #e2e8f0;
+  --tv-text-muted: #94a3b8;
+  --tv-text-dim: #64748b;
+  --tv-success: #22c55e;
+  --tv-warning: #f59e0b;
+  --tv-danger: #ef4444;
+  --tv-border: #2d3748;
+  --tv-gold: #ffd700;
+  --tv-silver: #c0c0c0;
+  --tv-bronze: #cd7f32;
+
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--tv-bg);
+  color: var(--tv-text);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  display: grid;
+  /* No 4K media query: everything below is in vh/clamp, so a 3840x2160 screen simply renders
+     the same layout larger - which is exactly what you want from the back of a room. */
+  grid-template-rows: auto 1fr auto;
+}
+
+/* ---------- header ---------- */
+.tv-header {
+  background: linear-gradient(135deg, var(--tv-orange) 0%, var(--tv-orange-light) 100%);
+  padding: 1.6vh 2vw;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.tv-title { font-size: clamp(1.8rem, 3.4vh, 3rem); font-weight: 900; letter-spacing: 0.04em; }
+.tv-subtitle { font-size: clamp(0.8rem, 1.5vh, 1.2rem); opacity: 0.9; }
+.tv-clock {
+  font-size: clamp(1.4rem, 2.8vh, 2.5rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.tv-clock-sub { font-size: clamp(0.7rem, 1.2vh, 1rem); opacity: 0.85; text-align: right; }
+
+/* A bar, not a dot: it has to be legible from the back of the room. */
+.tv-stale {
+  background: var(--tv-warning);
+  color: #1a1a2e;
+  font-size: clamp(1rem, 2vh, 1.4rem);
+  font-weight: 700;
+  text-align: center;
+  padding: 0.8vh 2vw;
+  animation: tv-pulse 2s ease-in-out infinite;
+}
+@keyframes tv-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.65; } }
+
+/* ---------- body grid ---------- */
+.tv-body {
+  display: grid;
+  grid-template-columns: 62fr 38fr;
+  gap: 1vh 1vw;
+  padding: 1vh 1vw;
+  min-height: 0;
+}
+.tv-col { display: grid; grid-template-rows: 1fr 1fr; gap: 1vh; min-height: 0; }
+
+.tv-panel {
+  background: var(--tv-surface);
+  border: 1px solid var(--tv-border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.tv-panel-title {
+  font-size: clamp(0.8rem, 1.6vh, 1.3rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--tv-orange-light);
+  padding: 1vh 1.2vw 0.6vh;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.tv-panel-note { font-size: clamp(0.65rem, 1.2vh, 0.95rem); color: var(--tv-text-dim); letter-spacing: 0; text-transform: none; }
+.tv-panel-body { flex: 1; min-height: 0; overflow: hidden; }
+.tv-empty {
+  height: 100%; display: flex; align-items: center; justify-content: center;
+  color: var(--tv-text-dim); font-size: clamp(0.9rem, 1.8vh, 1.3rem); text-align: center; padding: 1vw;
+}
+
+/* ---------- board ---------- */
+.tv-board-head, .tv-board-row {
+  display: grid;
+  grid-template-columns: 4.5vw 1fr 8vw 7vw 6vw;
+  align-items: center;
+  padding: 0.55vh 1.2vw;
+  gap: 0.5vw;
+}
+.tv-board-head {
+  font-size: clamp(0.65rem, 1.2vh, 0.95rem);
+  color: var(--tv-orange-light);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  border-bottom: 1px solid var(--tv-border);
+}
+.tv-board-row {
+  font-size: clamp(0.95rem, 2vh, 1.45rem);
+  border-bottom: 1px solid #222;
+  border-left: 4px solid #333;
+  transition: background 0.3s ease;
+}
+.tv-board-row.rank-1 { border-left-color: var(--tv-gold);   background: rgba(255, 215, 0, 0.08); }
+.tv-board-row.rank-2 { border-left-color: var(--tv-silver); background: rgba(192, 192, 192, 0.06); }
+.tv-board-row.rank-3 { border-left-color: var(--tv-bronze); background: rgba(205, 127, 50, 0.06); }
+.tv-medal { font-size: clamp(1rem, 2.2vh, 1.6rem); }
+.tv-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tv-level { color: var(--tv-orange-light); font-weight: 700; }
+.tv-num { font-variant-numeric: tabular-nums; }
+.tv-tokens { color: var(--tv-text-muted); font-size: 0.8em; font-variant-numeric: tabular-nums; }
+.tv-carried { color: var(--tv-text-dim); font-size: 0.7em; margin-left: 0.4vw; }
+
+/* ---------- funnel ---------- */
+.tv-funnel { display: flex; flex-direction: column; justify-content: space-evenly; height: 100%; padding: 0 1.2vw 1vh; }
+.tv-funnel-row { display: grid; grid-template-columns: 5.5vw 1fr auto; align-items: center; gap: 0.6vw; }
+.tv-funnel-label { font-size: clamp(0.8rem, 1.6vh, 1.2rem); color: var(--tv-text-muted); }
+.tv-funnel-track { background: #0d0d1a; border-radius: 4px; height: clamp(14px, 2.4vh, 30px); overflow: hidden; }
+.tv-funnel-fill { height: 100%; background: var(--tv-orange); transition: width 600ms ease; border-radius: 4px; }
+/* A level holding most of the field is where the event is stuck - worth seeing at a glance. */
+.tv-funnel-fill.wall { background: var(--tv-danger); }
+.tv-funnel-fill.off { background: var(--tv-text-dim); }
+.tv-funnel-count { font-size: clamp(1rem, 2.2vh, 1.7rem); font-weight: 700; font-variant-numeric: tabular-nums; min-width: 2.5vw; text-align: right; }
+
+/* ---------- feed ---------- */
+.tv-feed { display: flex; flex-direction: column; gap: 0.6vh; padding: 0 1.2vw 1vh; height: 100%; overflow: hidden; }
+.tv-feed-item {
+  background: #0d0d1a;
+  border-left: 3px solid var(--tv-border);
+  border-radius: 4px;
+  padding: 0.6vh 0.8vw;
+  animation: tv-slide-in 400ms ease;
+}
+.tv-feed-item.blocked { border-left-color: var(--tv-danger); }
+@keyframes tv-slide-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.tv-feed-top { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5vw; }
+.tv-feed-name { font-size: clamp(0.8rem, 1.5vh, 1.15rem); font-weight: 600; }
+.tv-feed-level { font-size: clamp(0.7rem, 1.2vh, 0.95rem); color: var(--tv-orange-light); }
+.tv-feed-prompt { font-size: clamp(0.75rem, 1.4vh, 1.05rem); color: var(--tv-text-muted); margin-top: 0.2vh; }
+.tv-feed-response { font-size: clamp(0.7rem, 1.3vh, 0.95rem); opacity: 0.75; margin-top: 0.2vh; }
+
+/* ---------- vitals ---------- */
+.tv-vitals {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  background: var(--tv-surface);
+  border-top: 1px solid var(--tv-orange);
+  padding: 1vh 2vw;
+  gap: 1vw;
+}
+.tv-vital { text-align: center; }
+.tv-vital-value { font-size: clamp(1.1rem, 2.6vh, 2.2rem); font-weight: 700; font-variant-numeric: tabular-nums; }
+.tv-vital-label { font-size: clamp(0.6rem, 1.1vh, 0.85rem); color: var(--tv-text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.tv-vital-value.good { color: var(--tv-success); }
+.tv-vital-value.bad { color: var(--tv-danger); }

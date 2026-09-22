@@ -9,7 +9,9 @@ export default function LionSpeak({
 }) {
   return (
     <Blockquote
-      style={{ height: 130, overflow: "auto" }}
+      // A fixed height wasted space on a short reply and trapped a long one in a tiny
+      // scroller on a phone. Grow with the answer, capped against the viewport.
+      style={{ minHeight: 96, maxHeight: "32dvh", overflow: "auto" }}
       cite="– The Great Lion"
       p="sm"
     >

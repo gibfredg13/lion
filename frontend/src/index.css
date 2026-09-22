@@ -7,3 +7,9 @@ body,
 #root {
   height: 100%;
 }
+
+/* Mobile browsers shrink the visual viewport as the URL bar hides and reappears, so 100% of a
+   stale height leaves the layout short. dvh tracks it; the height above stays as the fallback. */
+#root {
+  min-height: 100dvh;
+}

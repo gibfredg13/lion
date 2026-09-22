@@ -2,6 +2,18 @@ import { Box, Button, Container, Group, PasswordInput, Stack, Text, TextInput, T
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
+/**
+ * Mirrors `merlin.event.allowedEmailDomains` on the server so the form can say no immediately
+ * instead of after a round trip. The server is still the authority - this is only a courtesy.
+ */
+const ALLOWED_EMAIL_DOMAIN = "ing.com";
+
+const isCompanyEmail = (value: string) => {
+  const at = value.trim().toLowerCase().lastIndexOf("@");
+  if (at <= 0) return false;
+  return value.trim().toLowerCase().slice(at + 1) === ALLOWED_EMAIL_DOMAIN;
+};
+
 const PASSWORD_REQUIREMENTS = [
   { re: /[a-z]/, label: "At least one lowercase letter" },
   { re: /[A-Z]/, label: "At least one uppercase letter" },
@@ -15,6 +27,7 @@ export default function RegisterPage() {
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [accessCode, setAccessCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -26,6 +39,16 @@ export default function RegisterPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (!accessCode.trim()) {
+      setError("Event Access Code is required");
+      return;
+    }
+
+    if (!isCompanyEmail(email)) {
+      setError(`Registration is limited to @${ALLOWED_EMAIL_DOMAIN} email addresses`);
+      return;
+    }
 
     if (!isPasswordValid) {
       setError("Password does not meet all requirements");
@@ -44,7 +67,7 @@ export default function RegisterPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email, displayName, password }),
+        body: JSON.stringify({ email, displayName, password, accessCode }),
       });
 
       if (!response.ok) {
@@ -63,7 +86,9 @@ export default function RegisterPage() {
   return (
     <Box
       style={{
-        minHeight: "100vh",
+        // dvh, not vh: on iOS/Android the URL bar makes 100vh taller than the visible viewport,
+        // which pushed the submit button off the bottom of the screen.
+        minHeight: "100dvh",
         background: "linear-gradient(135deg, #ff8c00 0%, #ff6b00 100%)",
         display: "flex",
         alignItems: "center",
@@ -74,15 +99,15 @@ export default function RegisterPage() {
         <Stack gap="lg">
           <Box ta="center">
             <Title order={1} c="white" mb="xs">
-              🦁 Lion's Quest
+              🦁 The Lion's Den
             </Title>
             <Text c="white" size="lg">
-              Challenge Your Courage
+              Join the Challenge
             </Text>
           </Box>
 
           <Box
-            p="xl"
+            p={{ base: "md", sm: "xl" }}
             style={{
               backgroundColor: "white",
               borderRadius: "8px",
@@ -102,13 +127,33 @@ export default function RegisterPage() {
 
               <form onSubmit={handleRegister}>
                 <Stack gap="md">
+                  <Box>
+                    <TextInput
+                      label="Event Access Code"
+                      placeholder="Enter the code provided at the event"
+                      required
+                      value={accessCode}
+                      onChange={(e) => setAccessCode(e.currentTarget.value)}
+                      disabled={loading}
+                    />
+                    <Text size="xs" c="dimmed" mt={4}>
+                      Ask the event organizer for the access code
+                    </Text>
+                  </Box>
+
                   <TextInput
                     label="Email"
-                    placeholder="your@email.com"
+                    placeholder={`your.name@${ALLOWED_EMAIL_DOMAIN}`}
+                    description={`Your @${ALLOWED_EMAIL_DOMAIN} work address`}
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.currentTarget.value)}
+                    error={
+                      email.trim() && !isCompanyEmail(email)
+                        ? `Must be an @${ALLOWED_EMAIL_DOMAIN} address`
+                        : null
+                    }
                     disabled={loading}
                   />
 

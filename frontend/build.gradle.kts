@@ -37,5 +37,7 @@ tasks.register<NpmTask>("npmTest") {
 
 tasks.jar {
     dependsOn(tasks.named("npmBuild"))
-    from(project.layout.buildDirectory.dir("dist"))
+    from(project.layout.buildDirectory.dir("dist")) {
+        into("static")
+    }
 }

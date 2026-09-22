@@ -1,3 +1,11 @@
+> [!WARNING]
+> **This document is out of date.** It describes files and components that no longer exist
+> (for example `MerlinPrompt.tsx`, `GuardrailBreachService.java`, `LAUNCH.sh`), and predates the
+> rebuild of the levels, leaderboards and LLM provider.
+>
+> For what the system actually does now, read **`docs/IMPLEMENTATION_NOTES.md`**.
+> For the levels and how they are beaten, read **`docs/SOLUTIONS.md`**.
+
 ================================================================================
                     HACKMERLIN - SYSTEM OVERVIEW
                      For AI/Developer Understanding

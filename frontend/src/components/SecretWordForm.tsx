@@ -34,7 +34,7 @@ export function SecretWordForm({
       <Button
         disabled={disabled}
         variant="light"
-        color="green"
+        color="orange"
         type="submit"
         fullWidth
         mt="sm"

@@ -1,4 +1,4 @@
-/* Leaderboard - Orange ING Branding */
+/* Leaderboard - Orange Lion Branding */
 
 .leaderboard-container {
   min-height: 100vh;
@@ -79,7 +79,10 @@
 .leaderboard-table-wrapper {
   background: white;
   border-radius: 8px;
-  overflow: hidden;
+  /* Was `hidden`, which clipped the wider columns off the right edge instead of letting them
+     scroll. Nine columns do not fit a phone, and silently losing the last three is worse than
+     a scrollbar. */
+  overflow-x: auto;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   border: 2px solid #ff6600;
 }
@@ -167,12 +170,6 @@
   color: #333;
 }
 
-.email-col {
-  color: #ff6600;
-  font-size: 14px;
-  min-width: 200px;
-}
-
 .level-col {
   text-align: center;
 }
@@ -240,6 +237,59 @@
 }
 
 /* Responsive Design */
+.reached-col {
+  min-width: 170px;
+  white-space: nowrap;
+}
+
+/* Rows carrying a timeline open on click; the caret is the only affordance saying so. */
+.leaderboard-table tbody tr.expandable {
+  cursor: pointer;
+}
+
+.expand-caret {
+  margin-left: 6px;
+  color: #ff6600;
+  font-size: 12px;
+}
+
+.timeline-row > td {
+  background: #fff7f0;
+  padding: 12px 16px;
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.timeline li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  border: 1px solid #ffd09b;
+  border-left: 3px solid #ff6600;
+  border-radius: 4px;
+  background: white;
+}
+
+.timeline-level {
+  font-weight: 700;
+  font-size: 12px;
+  color: #ff6600;
+}
+
+.timeline-at {
+  font-size: 12px;
+  color: #666;
+  white-space: nowrap;
+}
+
 @media (max-width: 1024px) {
   .leaderboard-table {
     font-size: 14px;
@@ -248,10 +298,6 @@
   .leaderboard-table th,
   .leaderboard-table td {
     padding: 12px;
-  }
-
-  .email-col {
-    min-width: 150px;
   }
 }
 
@@ -288,12 +334,13 @@
     font-size: 16px;
   }
 
-  .email-col {
+  .date-col {
     display: none;
   }
 
-  .date-col {
-    display: none;
+  .reached-col {
+    min-width: 140px;
+    font-size: 11px;
   }
 
   .leaderboard-stats {

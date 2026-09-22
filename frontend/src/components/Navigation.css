@@ -1,4 +1,4 @@
-/* Navigation - Orange ING Branding */
+/* Navigation - Orange Lion Branding */
 
 .ing-navigation {
   background: linear-gradient(135deg, #ff6600 0%, #ff8533 100%);
@@ -109,28 +109,86 @@
   transform: translateY(-2px);
 }
 
-/* Responsive */
+/* Responsive.
+   The bar used to stack into a column here, which turned a sticky header into ~120px of a phone
+   screen before the game even started. It stays one row and shrinks instead. */
 @media (max-width: 768px) {
   .nav-container {
-    flex-direction: column;
-    gap: 10px;
-    height: auto;
-    padding: 10px 20px;
+    height: 56px;
+    padding: 0 12px;
+    gap: 8px;
   }
 
   .nav-logo {
-    font-size: 16px;
-    margin-bottom: 10px;
+    font-size: 15px;
+    gap: 6px;
   }
 
   .nav-links {
-    gap: 15px;
-    width: 100%;
-    justify-content: space-around;
+    gap: 8px;
   }
 
   .nav-link {
-    font-size: 13px;
-    padding: 6px 12px;
+    font-size: 12px;
+    padding: 6px 8px;
+  }
+
+  .nav-link:hover,
+  .nav-logout-btn:hover,
+  .nav-logo:hover {
+    /* The lift reads as a glitch under a finger, where there is no hover to leave. */
+    transform: none;
+  }
+
+  .nav-user-section {
+    margin-left: 8px;
+    padding-left: 8px;
+    gap: 8px;
+  }
+
+  .nav-user-name {
+    font-size: 12px;
+    max-width: 8ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* Narrow phones: keep the icons, drop the words. The emoji in each link still identifies it. */
+@media (max-width: 480px) {
+  .nav-container {
+    padding: 0 8px;
+  }
+
+  .nav-logo {
+    font-size: 20px;
+  }
+
+  .nav-logo .nav-logo-text {
+    display: none;
+  }
+
+  .nav-link {
+    font-size: 15px;
+    padding: 6px 6px;
+  }
+
+  .nav-link .nav-link-text {
+    display: none;
+  }
+
+  .nav-user-name {
+    display: none;
+  }
+
+  .nav-user-section {
+    margin-left: 4px;
+    padding-left: 8px;
+  }
+
+  .nav-logout-btn {
+    font-size: 12px;
+    padding: 5px 8px;
   }
 }

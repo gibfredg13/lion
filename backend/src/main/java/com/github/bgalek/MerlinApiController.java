@@ -8,11 +8,13 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -22,17 +24,63 @@ import java.util.stream.Collectors;
 class MerlinApiController {
 
     private final MerlinService merlinService;
+    private final com.github.bgalek.admin.AdminLeaderboardService leaderboardService;
+    /** 30 guesses/minute is generous for a human and useless for brute-forcing a 190-word list. */
+    private final RateLimiter submitLimiter = new RateLimiter(30, Duration.ofMinutes(1));
+    /** Bounds how fast one player can consume shared LLM capacity. */
+    private final RateLimiter questionLimiter = new RateLimiter(20, Duration.ofMinutes(1));
 
-    public MerlinApiController(MerlinService merlinService) {
+    public MerlinApiController(MerlinService merlinService,
+                               com.github.bgalek.admin.AdminLeaderboardService leaderboardService) {
         this.merlinService = merlinService;
+        this.leaderboardService = leaderboardService;
     }
 
-    @GetMapping(value = "/user")
-    MerlinSessionResponse level(HttpSession session) {
+    /**
+     * Public scoreboards, ranked by how far each player got. Deliberately unauthenticated: the
+     * projector view at /leaderboard/tv is a public route, and pointing it at an admin endpoint
+     * meant it displayed nothing at the venue. Email addresses are never included here.
+     */
+    @GetMapping("/leaderboard/progress")
+    ResponseEntity<List<com.github.bgalek.admin.AdminLeaderboardService.AdminLeaderboardResponse>> progressBoard(
+            @RequestParam(name = "level", required = false) Integer level) {
+        var rows = level == null
+                ? leaderboardService.getLeaderboard()
+                : leaderboardService.getLeaderboardByProgress(level);
+        return ResponseEntity.ok(rows.stream()
+                .map(com.github.bgalek.admin.AdminLeaderboardService.AdminLeaderboardResponse::withoutEmail)
+                .toList());
+    }
+
+    /** Players who cleared every level. Separate so the progress board is never empty. */
+    @GetMapping("/leaderboard/hall-of-fame")
+    ResponseEntity<List<com.github.bgalek.admin.AdminLeaderboardService.AdminLeaderboardResponse>> hallOfFame() {
+        return ResponseEntity.ok(leaderboardService.getHallOfFame().stream()
+                .map(com.github.bgalek.admin.AdminLeaderboardService.AdminLeaderboardResponse::withoutEmail)
+                .toList());
+    }
+
+    @GetMapping("/leaderboard/board-stats")
+    ResponseEntity<com.github.bgalek.admin.AdminLeaderboardService.AdminLeaderboardStatsResponse> boardStats() {
+        return ResponseEntity.ok(leaderboardService.getStats());
+    }
+
+    /**
+     * The game endpoints shipped with no authentication at all - only /api/user checked. That let
+     * anyone play anonymously against a bare session, which both burns shared LLM capacity and
+     * makes the attempt unattributable to a player.
+     */
+    private static String requireUserId(HttpSession session) {
         String userId = (String) session.getAttribute("userId");
         if (userId == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not authenticated");
         }
+        return userId;
+    }
+
+    @GetMapping(value = "/user")
+    MerlinSessionResponse level(HttpSession session) {
+        requireUserId(session);
         
         String email = (String) session.getAttribute("email");
         String displayName = (String) session.getAttribute("displayName");
@@ -53,16 +101,25 @@ class MerlinApiController {
 
     @PostMapping(value = "/question", consumes = "text/plain")
     ResponseEntity<String> level(HttpSession session, @RequestBody(required = false) String prompt) {
-        if (prompt.isBlank()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Prompt is required");
+        String userId = requireUserId(session);
+        // `required = false` means an empty body arrives as null, which used to NPE into a 500.
+        if (prompt == null || prompt.isBlank()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Prompt is required");
         if (prompt.length() > 150) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Prompt too long");
+        if (!questionLimiter.tryAcquire(userId)) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Slow down - Leo can only answer so fast");
+        }
         int currentLevel = merlinService.getCurrentLevel(session);
-        String response = merlinService.respond(session, currentLevel, prompt);
-        merlinService.logAttempt(session.getId(), currentLevel, prompt, response);
-        return ResponseEntity.ok(response);
+        MerlinService.Answer answer = merlinService.respond(session, currentLevel, prompt);
+        merlinService.logAttempt(userId, session.getId(), currentLevel, prompt, answer);
+        return ResponseEntity.ok(answer.text());
     }
 
     @PostMapping(value = "/submit", consumes = "text/plain")
     ResponseEntity<MerlinSessionResponse> submit(HttpSession session, @RequestBody String password) {
+        String userId = requireUserId(session);
+        if (!submitLimiter.tryAcquire(userId)) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Too many guesses - wait a moment");
+        }
         if (password.length() > 20) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password too long");
         if (password.isBlank()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password is required");
         if (merlinService.checkSecret(session, password)) {
@@ -110,7 +167,9 @@ class MerlinApiController {
 
     @PostMapping(value = "/reset")
     ResponseEntity<Void> reset(HttpSession session) {
-        session.invalidate();
+        requireUserId(session);
+        // Fix 5: Reset level without destroying login session — user stays logged in
+        merlinService.resetLevel(session);
         return ResponseEntity.accepted().build();
     }
 

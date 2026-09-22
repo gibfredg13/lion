@@ -14,16 +14,32 @@ import java.util.UUID;
 @Service
 public class AuthenticationService {
     private final UserRepository userRepository;
+    private final EventAccessCodeService eventAccessCodeService;
+    private final EmailDomainValidator emailDomainValidator;
     private final LoginHistoryRepository loginHistoryRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public AuthenticationService(UserRepository userRepository, LoginHistoryRepository loginHistoryRepository, PasswordEncoder passwordEncoder) {
+    public AuthenticationService(UserRepository userRepository, 
+                                 LoginHistoryRepository loginHistoryRepository, 
+                                 PasswordEncoder passwordEncoder,
+                                 EventAccessCodeService eventAccessCodeService,
+                                 EmailDomainValidator emailDomainValidator) {
         this.userRepository = userRepository;
         this.loginHistoryRepository = loginHistoryRepository;
         this.passwordEncoder = passwordEncoder;
+        this.eventAccessCodeService = eventAccessCodeService;
+        this.emailDomainValidator = emailDomainValidator;
     }
 
-    public User register(String email, String displayName, String password) throws AuthenticationException {
+    public User register(String email, String displayName, String password, String accessCode) throws AuthenticationException {
+        if (!eventAccessCodeService.validate(accessCode)) {
+            throw new AuthenticationException("Invalid event access code");
+        }
+
+        if (!emailDomainValidator.isAllowed(email)) {
+            throw new AuthenticationException(emailDomainValidator.getValidationMessage());
+        }
+
         if (!PasswordValidator.isValid(password)) {
             throw new AuthenticationException(PasswordValidator.getValidationMessage());
         }
@@ -49,6 +65,16 @@ public class AuthenticationService {
         return userRepository.save(user);
     }
 
+    public User register(String email, String displayName, String password) throws AuthenticationException {
+        return register(email, displayName, password, null);
+    }
+
+    /**
+     * Note there is no email-domain check here, only on registration. The first account ever
+     * created is made an admin (see {@code register}), so an admin account that predates the
+     * domain restriction would be locked out of its own dashboard with no in-app recovery.
+     * Restricting registration is already sufficient: no new non-company account can be created.
+     */
     public User login(String email, String password, HttpServletRequest request) throws AuthenticationException {
         Optional<User> optionalUser = userRepository.findByEmail(email);
         if (optionalUser.isEmpty()) {

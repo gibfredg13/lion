@@ -115,11 +115,8 @@ hackmerlin.io/
 STATISTICS
 ==========
 
-Code:
-  - Backend: 30 Java files
-  - Frontend: 19 TypeScript/React files
-  - Total: 49 source files
-  - No dead code / orphaned files ✓
+  Regenerate with:  find backend/src frontend/src admin-dashboard/src -type f \\
+                      \\( -name '*.java' -o -name '*.ts' -o -name '*.tsx' \\) | wc -l
 
 Documentation:
   - 17 comprehensive guides
@@ -185,4 +182,4 @@ ORGANIZATION PRINCIPLES
 ✓ No dead code - All files are in active use
 ✓ Production ready - Docker, auth, monitoring all included
 
-STATUS: ✅ COMPLETE & PRODUCTION READY
+STATUS: see docs/IMPLEMENTATION_NOTES.md for the current state.

@@ -56,7 +56,7 @@ export function useLion() {
         notifications.show({
           title: "Your journey restarts.",
           message: "Return to face the lion again!",
-          color: "blue",
+          color: "orange",
         });
       },
     }),
@@ -68,7 +68,7 @@ export function useLion() {
         notifications.show({
           title: "You're on the board!",
           message: "Your name joins the greatest hunters!",
-          color: "blue",
+          color: "orange",
         });
       },
       onError: () => {

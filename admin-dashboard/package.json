@@ -1,0 +1,30 @@
+{
+  "name": "lions-den-admin",
+  "version": "1.0.0",
+  "description": "The Lion's Den \u2014 Admin War Room Dashboard",
+  "private": true,
+  "scripts": {
+    "dev": "vite --port 3001",
+    "build": "tsc && vite build",
+    "preview": "vite preview --port 3001",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.8.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "jsdom": "^30.0.1",
+    "typescript": "^5.0.0",
+    "vite": "^5.0.0",
+    "vitest": "^2.1.9"
+  }
+}

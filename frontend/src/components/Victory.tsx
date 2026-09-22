@@ -46,14 +46,14 @@ export default function Victory({
               disabled={
                 addName.isPending || addName.isSuccess || !!submittedName
               }
-              color="green"
+              color="orange"
               type="submit"
             >
               Submit
             </Button>
           )}
         </form>
-        <Button color="blue" variant="filled" onClick={onReset}>
+        <Button color="orange" variant="filled" onClick={onReset}>
           Reset progress
         </Button>
       </Stack>

@@ -1,0 +1,13 @@
+# The image builds its own dependencies: `npm install` runs before `COPY . .`, so anything the host
+# already installed here would overwrite it. That matters more than build speed - the host is glibc
+# and the build stage is node:20-alpine, so a copied node_modules brings native binaries (rollup's,
+# among others) that cannot load under musl, and the build fails inside the container for a reason
+# that is invisible from outside it.
+node_modules
+dist
+
+.git
+.gitignore
+*.log
+*.md
+coverage

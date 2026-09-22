@@ -1,3 +1,4 @@
+import React from "react";
 import { Button, Stack, Text, Title } from "@mantine/core";
 import { useState } from "react";
 import { useLion } from "./hooks/lion.ts";
@@ -12,11 +13,12 @@ import Victory from "./components/Victory.tsx";
 import { modals } from "@mantine/modals";
 import AdminDashboard from "./components/AdminDashboard.tsx";
 import Leaderboard from "./components/Leaderboard.tsx";
-import RealtimeBreachDashboard from "./components/RealtimeBreachDashboard.tsx";
 import LoginPage from "./components/LoginPage.tsx";
 import RegisterPage from "./components/RegisterPage.tsx";
 import ProtectedRoute from "./components/ProtectedRoute.tsx";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import LeaderboardTV from "./components/tv/LeaderboardTV";
+import Navigation from "./components/Navigation.tsx";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
 export default function App() {
   return (
@@ -36,15 +38,9 @@ export default function App() {
           path="/admin"
           element={
             <ProtectedRoute>
-              <AdminApp />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/breaches"
-          element={
-            <ProtectedRoute>
-              <BreachesApp />
+              <AdminRoute>
+                <AdminApp />
+              </AdminRoute>
             </ProtectedRoute>
           }
         />
@@ -56,34 +52,59 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/leaderboard/tv" element={<LeaderboardTV />} />
       </Routes>
     </Router>
   );
+}
+
+/** Fix 6: Shared layout with Navigation bar for all authenticated pages */
+function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <Navigation />
+      {children}
+    </>
+  );
+}
+
+/** Fix 7: AdminRoute guard — redirects non-admins to the challenge page */
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const session = useSession();
+  if (session.isLoading) return <QuestLoader />;
+  if (!session.data?.isAdmin) return <Navigate to="/" replace />;
+  return <>{children}</>;
 }
 
 function MainApp() {
   const session = useSession();
   if (session.isLoading || !session.data) return <QuestLoader />;
   return (
-    <LionLayout>
-      <Level
-        currentLevel={session.data.currentLevel}
-        maxLevel={session.data.maxLevel}
-      />
-    </LionLayout>
+    <AuthenticatedLayout>
+      <LionLayout>
+        <Level
+          currentLevel={session.data.currentLevel}
+          maxLevel={session.data.maxLevel}
+        />
+      </LionLayout>
+    </AuthenticatedLayout>
   );
 }
 
 function AdminApp() {
-  return <AdminDashboard />;
-}
-
-function BreachesApp() {
-  return <RealtimeBreachDashboard />;
+  return (
+    <AuthenticatedLayout>
+      <AdminDashboard />
+    </AuthenticatedLayout>
+  );
 }
 
 function LeaderboardApp() {
-  return <Leaderboard />;
+  return (
+    <AuthenticatedLayout>
+      <Leaderboard />
+    </AuthenticatedLayout>
+  );
 }
 
 function Level({
@@ -121,13 +142,18 @@ function Level({
         level's secret word. The lion grows stronger with each level. Can you complete all seven trials?
       </Text>
       <LionChallenge
+        key={currentLevel}
         disabled={merlin.question.isPending}
-        onSubmit={(prompt) => {
+        onSubmit={(prompt, reset) => {
           merlin.question.mutate(prompt, {
             onSuccess: (result: string) => {
               setResponse(result);
             },
           });
+          // Emptied as soon as the question is sent, not on reply: LionSpeak is already showing
+          // its skeleton, so leaving the text in place for the whole round-trip reads as a
+          // failed submit.
+          reset();
         }}
         level={currentLevel}
         maxLevel={maxLevel}
@@ -145,8 +171,8 @@ function Level({
                 modals.open({
                   centered: true,
                   title: (
-                    <Title size="h3" component="span">
-                      Victory!
+                    <Title order={2} component="span" c="green.6" fw={900}>
+                      🎉 Victory!
                     </Title>
                   ),
                   children: (
@@ -154,6 +180,7 @@ function Level({
                       <Text>{result.finishedMessage}</Text>
                       <Button
                         fullWidth
+                        color="green"
                         onClick={() => modals.closeAll()}
                         mt="md"
                       >
@@ -162,8 +189,10 @@ function Level({
                     </>
                   ),
                 });
-                setResponse(undefined);
               }
+              // Outside the branch above: on the final level no modal opens, and the previous
+              // level's reply used to linger behind the Victory screen.
+              setResponse(undefined);
 
               queryClient.setQueryData<MerlinSession>(["session"], (old) => {
                 if (!old) return;

@@ -4,9 +4,9 @@
   "display": "standalone",
   "scope": "/",
   "start_url": "/",
-  "name": "HackMerlin",
-  "short_name": "HackMerlin",
-  "description": "Trick Merlin into revealing information and experience the limitations of large language models firsthand.",
+  "name": "The Lion's Den",
+  "short_name": "Lion's Den",
+  "description": "Outwit Leo the guardian lion and uncover the password he protects.",
   "icons": [
     {
       "src": "/icon-192x192.png",

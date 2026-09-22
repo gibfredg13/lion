@@ -18,16 +18,50 @@ interface LeaderboardStats {
 }
 
 const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'llm' | 'leaderboard' | 'analytics' | 'login-history'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'llm' | 'leaderboard' | 'analytics' | 'login-history' | 'live-stats'>('dashboard');
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<LeaderboardStats | null>(null);
   const [loginHistory, setLoginHistory] = useState<any[]>([]);
   const [loginStats, setLoginStats] = useState<any>(null);
+  
+  // Live Stats states
+  const [activeUsersCount, setActiveUsersCount] = useState(0);
+  const [tokenStats, setTokenStats] = useState<any>(null);
+  const [dgxHealth, setDgxHealth] = useState<any>(null);
+  const [levelStats, setLevelStats] = useState<any[]>([]);
+
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchData();
+    let interval: any;
+    if (activeTab === 'live-stats') {
+      interval = setInterval(fetchLiveStats, 5000);
+    }
+    return () => clearInterval(interval);
   }, [activeTab]);
+
+  const fetchLiveStats = async () => {
+    try {
+      const [usersRes, tokensRes, dgxRes, levelsRes] = await Promise.all([
+        fetch('/api/admin/active-users', { credentials: "include" }),
+        fetch('/api/admin/token-stats', { credentials: "include" }),
+        fetch('/api/admin/dgx-health', { credentials: "include" }),
+        fetch('/api/admin/level-stats', { credentials: "include" })
+      ]);
+      const usersData = await usersRes.json().catch(() => ({ count: 0 }));
+      const tokensData = await tokensRes.json().catch(() => ({}));
+      const dgxData = await dgxRes.json().catch(() => ({}));
+      const levelsData = await levelsRes.json().catch(() => []);
+      
+      setActiveUsersCount(usersData.count || 0);
+      setTokenStats(tokensData);
+      setDgxHealth(dgxData);
+      setLevelStats(levelsData);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -49,6 +83,8 @@ const AdminDashboard: React.FC = () => {
         const statsData = await statsRes.json();
         setLoginHistory(historyData);
         setLoginStats(statsData);
+      } else if (activeTab === 'live-stats') {
+        await fetchLiveStats();
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -61,8 +97,8 @@ const AdminDashboard: React.FC = () => {
     <div className="admin-dashboard">
       <div className="admin-header">
         <div className="admin-header-content">
-          <h1>🏦 ING Security Challenge Admin</h1>
-          <p>Manage users, LLM providers, and track CTF progress</p>
+          <h1>🦁 The Lion's Den — Admin</h1>
+          <p>Real-time event monitoring and control</p>
         </div>
       </div>
 
@@ -72,6 +108,12 @@ const AdminDashboard: React.FC = () => {
           onClick={() => setActiveTab('dashboard')}
         >
           📊 Dashboard
+        </button>
+        <button
+          className={`nav-btn ${activeTab === 'live-stats' ? 'active' : ''}`}
+          onClick={() => setActiveTab('live-stats')}
+        >
+          ⚡ Live Stats
         </button>
         <button
           className={`nav-btn ${activeTab === 'users' ? 'active' : ''}`}
@@ -107,11 +149,93 @@ const AdminDashboard: React.FC = () => {
 
       <div className="admin-content">
         {activeTab === 'dashboard' && <DashboardTab stats={stats} users={users} />}
+        {activeTab === 'live-stats' && (
+          <LiveStatsTab 
+            activeUsersCount={activeUsersCount} 
+            tokenStats={tokenStats} 
+            dgxHealth={dgxHealth} 
+            levelStats={levelStats}
+            refreshData={fetchLiveStats}
+          />
+        )}
         {activeTab === 'users' && <UsersTab users={users} loading={loading} />}
         {activeTab === 'login-history' && <LoginHistoryTab loginHistory={loginHistory} loginStats={loginStats} loading={loading} />}
         {activeTab === 'llm' && <LlmConfigTab />}
         {activeTab === 'leaderboard' && <LeaderboardTab stats={stats} loading={loading} />}
         {activeTab === 'analytics' && <Analytics />}
+      </div>
+    </div>
+  );
+};
+
+const LiveStatsTab: React.FC<any> = ({ activeUsersCount, tokenStats, dgxHealth, levelStats, refreshData }) => {
+  const toggleLevel = async (level: number, enabled: boolean) => {
+    try {
+      await fetch(`/api/admin/level/${level}/enabled`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: "include",
+        body: JSON.stringify({ enabled })
+      });
+      refreshData();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  return (
+    <div className="tab-content live-stats-tab">
+      <h2>⚡ Live Platform Stats</h2>
+      <div className="metrics-grid">
+        <div className="metric-card">
+          <div className="metric-icon">👥</div>
+          <div className="metric-info">
+            <p>Active Users</p>
+            <h3>{activeUsersCount}</h3>
+          </div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-icon">🔢</div>
+          <div className="metric-info">
+            <p>Tokens / Min</p>
+            <h3>{tokenStats?.tokensPerMinute || 0}</h3>
+          </div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-icon">🖥️</div>
+          <div className="metric-info">
+            <p>DGX Health</p>
+            <h3>{dgxHealth?.status || 'Unknown'}</h3>
+          </div>
+        </div>
+      </div>
+
+      <div className="levels-control" style={{ marginTop: '2rem' }}>
+        <h3>Level Controls</h3>
+        <table className="users-table" style={{ width: '100%', marginTop: '1rem' }}>
+          <thead>
+            <tr>
+              <th>Level</th>
+              <th>Status</th>
+              <th>Toggle</th>
+            </tr>
+          </thead>
+          <tbody>
+            {levelStats.map((l: any) => (
+              <tr key={l.level}>
+                <td>Level {l.level}</td>
+                <td>{l.enabled ? '🟢 Active' : '🔴 Disabled'}</td>
+                <td>
+                  <input 
+                    type="checkbox" 
+                    checked={l.enabled} 
+                    onChange={(e) => toggleLevel(l.level, e.target.checked)} 
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

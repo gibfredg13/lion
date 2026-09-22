@@ -19,7 +19,8 @@ const Navigation: React.FC = () => {
     <nav className="ing-navigation">
       <div className="nav-container">
         <Link to="/" className="nav-logo">
-          🏦 ING Security Challenge
+          {/* The label collapses to the emoji alone on narrow phones - see Navigation.css. */}
+          🦁 <span className="nav-logo-text">The Lion&apos;s Den</span>
         </Link>
 
         <div className="nav-links">
@@ -27,20 +28,22 @@ const Navigation: React.FC = () => {
             to="/"
             className={`nav-link ${isActive('/') ? 'active' : ''}`}
           >
-            🎯 Challenge
+            🎯 <span className="nav-link-text">Challenge</span>
           </Link>
           <Link
             to="/leaderboard"
             className={`nav-link ${isActive('/leaderboard') ? 'active' : ''}`}
           >
-            🏆 Leaderboard
+            🏆 <span className="nav-link-text">Leaderboard</span>
           </Link>
-          <Link
-            to="/admin"
-            className={`nav-link admin-link ${isActive('/admin') ? 'active' : ''}`}
-          >
-            ⚙️ Admin
-          </Link>
+          {session.data?.isAdmin && (
+            <Link
+              to="/admin"
+              className={`nav-link admin-link ${isActive('/admin') ? 'active' : ''}`}
+            >
+              ⚙️ <span className="nav-link-text">Admin</span>
+            </Link>
+          )}
           {session.data?.displayName && (
             <div className="nav-user-section">
               <span className="nav-user-name">{session.data.displayName}</span>

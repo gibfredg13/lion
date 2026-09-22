@@ -17,15 +17,15 @@ public interface MerlinLevel {
     }
 
     default String inputFilterResponse() {
-        return "I have detected a manipulation attempt. Your question was blocked.";
+        return "🦁 Nice try! I spotted that tactic. Leo doesn't fall for that.";
     }
 
     default String outputFilterResponse() {
-        return "Sorry I can't tell you that.";
+        return "🦁 I almost revealed it — but my defenses caught that. Try a different approach!";
     }
 
     default String getModel() {
-        return "hackmerlin-gpt35";
+        return "";
     }
 
     String getLevelFinishedResponse();

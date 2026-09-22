@@ -6,7 +6,7 @@ spring:
     jdbc:
       initialize-schema: ALWAYS
   datasource:
-    url: jdbc:postgresql://postgres:5432/hackmerlin
+    url: jdbc:postgresql://postgres:5432/lionsden
     driver-class-name: org.postgresql.Driver
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD:postgres}
@@ -19,6 +19,7 @@ spring:
     hibernate:
       ddl-auto: update
     open-in-view: false
+    defer-datasource-initialization: true
     properties:
       hibernate:
         format_sql: true
@@ -38,118 +39,73 @@ server:
     include-message: never
 merlin:
   llm:
-    provider: ollama
-    baseUrl: http://ollama:11434
-    defaultModel: llama2
-    advancedModel: llama2
-  passwords:
-    - Scarlet
-    - Stellar
-    - Whiskers
-    - Lagoon
-    - Harmony
-    - Thunder
-    - Willow
-    - Blossom
-    - Saffron
-    - Velvet
-    - Serene
-    - Twilight
-    - Mosaic
-    - Breeze
-    - Pebbles
-    - Jade
-    - Radiant
-    - Glimmer
-    - Flamingo
-    - Nimbus
-    - Marigold
-    - Wander
-    - Aurora
-    - Luminary
-    - Misty
-    - Tropic
-    - Ember
-    - Enigma
-    - Zephyr
-    - Poppies
-    - Mirage
-    - Tundra
-    - Quasar
-    - Aquatic
-    - Zinnia
-    - Symphony
-    - Glitter
-    - Bliss
-    - Whisper
-    - Coral
-    - Opal
-    - Cascade
-    - Gossamer
-    - Azure
-    - Jubilee
-    - Reverie
-    - Solace
-    - Elysian
-    - Puzzle
-    - Lemon
-    - Helmet
-    - Breeze
-    - Ticket
-    - Turtle
-    - Wallet
-    - Orange
-    - Bakery
-    - Circus
-    - Hammer
-    - Juggle
-    - Zipper
-    - Muffin
-    - Cherry
-    - Planet
-    - Rocket
-    - Father
-    - Camera
-    - Castle
-    - Ginger
-    - Basket
-    - Forest
-    - Dolphin
-    - Friend
-    - Guitar
-    - Icebox
-    - Jaguar
-    - Lizard
-    - Mosaic
-    - Needle
-    - Outlet
-    - Pirate
-    - Rabbit
-    - Singer
-    - Travel
-    - Walnut
-    - Window
-    - Yellow
-    - Anchor
-    - Bumble
-    - Candle
-    - Dancer
-    - Fabric
-    - Goblet
-    - Hammer
-    - Insect
-    - Jacket
-    - Kitchen
-    - Locket
-    - Marvel
-    - Nimble
-    - Oyster
-    - Parrot
-    - Quiver
-    - Racket
-    - Saddle
-    - Thumbs
-    - Umbrella
-    - Velvet
-    - Waffle
-    - Zenith
+    provider: ${LLM_PROVIDER:dgxspark}
+    baseUrl: ${LLM_BASEURL:http://192.168.1.129:8000}
+    # Sent explicitly rather than left blank. A blank value means resolveModel() probes
+    # /v1/models on first use, and against a box that is switched off that probe costs five
+    # seconds per call until it backs off. vLLM also rejects a request with no model field.
+    defaultModel: ${LLM_MODEL:nvidia/Qwen3.6-35B-A3B-NVFP4}
+    advancedModel: ""
+    disableThinking: ${LLM_DISABLE_THINKING:true}
+    maxTokens: ${LLM_MAX_TOKENS:320}
+    # The Station runs vLLM with continuous batching: 16 concurrent requests measured at 0.48s
+    # wall, against 7s/14s/21s/28s for four on the Spark's llama.cpp. Leaving this at 4 costs
+    # roughly eight times the throughput and reports no error anywhere.
+    maxConcurrent: ${LLM_MAX_CONCURRENT:32}
+    # Required by vLLM/Qwen3.6, which answers HTTP 400 for a second system message.
+    mergeSystemMessages: ${LLM_MERGE_SYSTEM_MESSAGES:true}
+
+    # Which box to start on. The admin's stored choice overrides this whenever it still names a
+    # declared backend; set forceBackend to ignore and clear that stored choice, which is the way
+    # back if the room is saved onto a box that later dies.
+    activeBackend: ${LLM_ACTIVE_BACKEND:station}
+    forceBackend: ${LLM_FORCE_BACKEND:false}
+
+    # Explicit ${VAR:default} placeholders rather than relying on relaxed binding of environment
+    # variables into map keys - the latter is the fragile corner of Spring's binding, and this file
+    # already carries a note about an env-syntax mistake that cost an afternoon.
+    backends:
+      station:
+        label: "DGX Station (vLLM)"
+        kind: dgxspark
+        # No /v1 suffix: the provider appends /v1/chat/completions and /v1/models itself.
+        baseUrl: ${LLM_STATION_BASEURL:http://192.168.1.129:8000}
+        model: ${LLM_STATION_MODEL:nvidia/Qwen3.6-35B-A3B-NVFP4}
+        # Continuous batching: 16 concurrent requests measured at 0.48s wall, against 7s/14s/21s/28s
+        # for four on the Spark. Leaving this at 4 costs roughly eight times the throughput, and
+        # nothing anywhere reports that it is happening.
+        maxConcurrent: ${LLM_STATION_MAXCONCURRENT:32}
+        # Same generation budget on both boxes on purpose: two calibration runs are only comparable
+        # if this matches.
+        maxTokens: 320
+        disableThinking: true
+        # Rejects a second system message, so the levels' several must be joined into one.
+        mergeSystemMessages: true
+        # A box that answers in 0.27s has no business making anyone wait 45 seconds for a slot.
+        waitSeconds: 30
+
+      spark:
+        label: "DGX Spark (llama.cpp)"
+        kind: dgxspark
+        baseUrl: ${LLM_SPARK_BASEURL:http://192.168.1.145:42000}
+        # Set this once the box is on and its model id is known: a blank value makes the provider
+        # probe /v1/models, which costs five seconds per call against a box that is switched off.
+        model: ${LLM_SPARK_MODEL:}
+        # Must match llama.cpp's --parallel.
+        maxConcurrent: ${LLM_SPARK_MAXCONCURRENT:4}
+        maxTokens: 320
+        disableThinking: true
+        # llama.cpp accepts the list form, so leave its prompts exactly as they have always been.
+        mergeSystemMessages: false
+        waitSeconds: 45
+  event:
+    # Spring's default syntax is ${VAR:default}; the shell's ${VAR:-default} yielded a literal "-LIONHACK2026".
+    accessCode: ${EVENT_ACCESS_CODE:LIONHACK2026}
+    # Self-registration is limited to these domains. Comma-separated, so a second country domain
+    # can be added without a redeploy. The access code alone is not enough: a code spreads by word
+    # of mouth, the domain is what ties an account to an employee.
+    allowedEmailDomains: ${EVENT_ALLOWED_EMAIL_DOMAINS:ing.com}
+  cors:
+    # Empty = loopback + private LAN ranges (see DEFAULT_CORS_PATTERNS).
+    # Set this to your public hostname(s) before exposing the game through a tunnel.
+    allowedOrigins: ${CORS_ALLOWED_ORIGINS:}

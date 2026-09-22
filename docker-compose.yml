@@ -1,48 +1,54 @@
-version: '3.8'
-
 services:
-  # PostgreSQL Database
   postgres:
     image: postgres:17-alpine
-    container_name: hackmerlin-db
+    container_name: lionsden-db
+    ports:
+      - "15439:5432"
     environment:
-      POSTGRES_DB: hackmerlin
-      POSTGRES_USER: hackmerlin
-      POSTGRES_PASSWORD: hackmerlin_secure_password
+      POSTGRES_DB: lionsden
+      POSTGRES_USER: lionsden
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-lionsden_secure_pw}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - hackmerlin-network
-    ports:
-      - "5432:5432"
+      - lionsden-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hackmerlin"]
+      test: ["CMD-SHELL", "pg_isready -U lionsden"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # Main HackMerlin Application
-  hackmerlin:
+  lionsden-app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: hackmerlin-app
+    container_name: lionsden-app
     ports:
-      - "8080:8080"
+      - "18088:8080"
     environment:
-      MERLIN_LLM_PROVIDER: ${MERLIN_LLM_PROVIDER:-ollama}
-      MERLIN_LLM_BASEURL: ${MERLIN_LLM_BASEURL:-http://ollama:11434}
-      MERLIN_LLM_DEFAULTMODEL: ${MERLIN_LLM_DEFAULTMODEL:-llama2}
-      MERLIN_LLM_ADVANCEDMODEL: ${MERLIN_LLM_ADVANCEDMODEL:-llama2}
-      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT:-}
-      AZURE_OPENAI_KEY: ${AZURE_OPENAI_KEY:-}
-      AZURE_OPENAI_DEPLOYMENT: ${AZURE_OPENAI_DEPLOYMENT:-}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      MERLIN_LLM_PROVIDER: ${LLM_PROVIDER:-dgxspark}
+      MERLIN_LLM_BASEURL: ${LLM_BASEURL:-http://192.168.1.129:8000}
+      MERLIN_LLM_DEFAULTMODEL: ${LLM_MODEL:-nvidia/Qwen3.6-35B-A3B-NVFP4}
+      MERLIN_LLM_ADVANCEDMODEL: ${LLM_MODEL:-}
+      MERLIN_LLM_DISABLETHINKING: ${LLM_DISABLE_THINKING:-true}
+      MERLIN_LLM_MAXTOKENS: ${LLM_MAX_TOKENS:-320}
+      MERLIN_LLM_MAXCONCURRENT: ${LLM_MAX_CONCURRENT:-32}
+      MERLIN_LLM_MERGESYSTEMMESSAGES: ${LLM_MERGE_SYSTEM_MESSAGES:-true}
+      LLM_ACTIVE_BACKEND: ${LLM_ACTIVE_BACKEND:-station}
+      LLM_FORCE_BACKEND: ${LLM_FORCE_BACKEND:-false}
+      LLM_STATION_BASEURL: ${LLM_STATION_BASEURL:-http://192.168.1.129:8000}
+      LLM_STATION_MODEL: ${LLM_STATION_MODEL:-nvidia/Qwen3.6-35B-A3B-NVFP4}
+      LLM_STATION_MAXCONCURRENT: ${LLM_STATION_MAXCONCURRENT:-32}
+      LLM_SPARK_BASEURL: ${LLM_SPARK_BASEURL:-http://192.168.1.145:42000}
+      LLM_SPARK_MODEL: ${LLM_SPARK_MODEL:-}
+      LLM_SPARK_MAXCONCURRENT: ${LLM_SPARK_MAXCONCURRENT:-4}
+      MERLIN_EVENT_ACCESSCODE: ${EVENT_ACCESS_CODE:-LIONHACK2026}
+      MERLIN_EVENT_ALLOWEDEMAILDOMAINS: ${EVENT_ALLOWED_EMAIL_DOMAINS:-ing.com}
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/hackmerlin
-      SPRING_DATASOURCE_USERNAME: hackmerlin
-      SPRING_DATASOURCE_PASSWORD: hackmerlin_secure_password
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/lionsden
+      SPRING_DATASOURCE_USERNAME: lionsden
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-lionsden_secure_pw}
       SPRING_DATASOURCE_DRIVERCLASSNAME: org.postgresql.Driver
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
@@ -51,40 +57,33 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      ollama:
-        condition: service_started
     networks:
-      - hackmerlin-network
+      - lionsden-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s
     restart: unless-stopped
 
-  # Ollama Service (Local LLM)
-  ollama:
-    image: ollama/ollama:latest
-    container_name: hackmerlin-ollama
+  admin-dashboard:
+    build:
+      context: ./admin-dashboard
+      dockerfile: Dockerfile
+    container_name: lionsden-admin
     ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
+      - "30010:80"
+    depends_on:
+      - lionsden-app
     networks:
-      - hackmerlin-network
-    environment:
-      OLLAMA_HOST: 0.0.0.0:11434
+      - lionsden-network
     restart: unless-stopped
-    # Pull model on startup
-    entrypoint: sh -c 'ollama serve & sleep 3 && ollama pull ${MERLIN_LLM_DEFAULTMODEL:-llama2} && wait'
 
 networks:
-  hackmerlin-network:
+  lionsden-network:
     driver: bridge
 
 volumes:
   postgres_data:
-    driver: local
-  ollama_data:
     driver: local

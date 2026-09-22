@@ -1,5 +1,11 @@
 # HackMerlin Documentation Index
 
+> **Note:** several documents listed below predate the rebuild of the levels, leaderboards and LLM
+> provider, and describe files that no longer exist. For what the system actually does now, read
+> **[IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md)** (what changed and why, including the
+> post-event player-feedback fixes in section 16) and **[SOLUTIONS.md](SOLUTIONS.md)** (the levels
+> and how they are beaten). Neither is indexed below.
+
 ## 📚 Complete Documentation Set for AI/Developers
 
 This directory contains comprehensive documentation to help any AI or developer understand, deploy, and maintain HackMerlin.
@@ -47,6 +53,8 @@ If you're using HackMerlin as a player:
 ### For Administrators & Operators
 If you're running/managing HackMerlin:
 
+- **[CALIBRATION_AND_STRESS_TESTING.md](CALIBRATION_AND_STRESS_TESTING.md)** - Calibration engine, invariants & DGX Spark stress testing
+- **[DGX_SPARK_TUNING.md](DGX_SPARK_TUNING.md)** - DGX Spark performance, continuous batching & slot tuning
 - **[DEPLOY_WITH_AUTH.md](DEPLOY_WITH_AUTH.md)** - Deployment guide
 - **[AUTHENTICATION_SYSTEM.md](AUTHENTICATION_SYSTEM.md)** - Security details
 - **[AUTH_CHECKLIST.md](AUTH_CHECKLIST.md)** - Setup verification

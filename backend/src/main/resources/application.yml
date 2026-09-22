@@ -16,6 +16,22 @@ merlin:
     baseUrl: https://hackmerlin-openai.openai.azure.com
     defaultModel: hackmerlin-gpt35
     advancedModel: hackmerlin-gpt4
+    # Reasoning models (Qwen3, DeepSeek-R1) return an EMPTY `content` and put everything in
+    # `reasoning_content` unless thinking is switched off - which reaches players as a blank reply.
+    disableThinking: true
+    # Hard cap on generated tokens. Levels ask Leo to be brief; long replies only slow the queue.
+    maxTokens: 320
+    # Must match llama.cpp's --parallel. Anything above it just queues invisibly.
+    maxConcurrent: 4
+  event:
+    accessCode: ${EVENT_ACCESS_CODE:LIONHACK2026}
+    # Self-registration is limited to these domains. Comma-separated, so a second country domain
+    # can be added without a redeploy. The access code alone is not enough: a code spreads by word
+    # of mouth, the domain is what ties an account to an employee.
+    allowedEmailDomains: ${EVENT_ALLOWED_EMAIL_DOMAINS:ing.com}
+  cors:
+    # Empty = loopback + private LAN ranges. Add public hostnames here before the event.
+    allowedOrigins: ${CORS_ALLOWED_ORIGINS:}
   passwords:
     - Scarlet
     - Stellar
@@ -191,6 +207,10 @@ merlin:
     - Pirate
     - Quiver
 spring:
+  config:
+    import: classpath:levels.yml
+  jpa:
+    defer-datasource-initialization: true
   sql:
     init:
       mode: always

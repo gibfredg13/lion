@@ -35,3 +35,8 @@ out/
 
 ### VS Code ###
 .vscode/
+
+# Local environment — holds DB_PASSWORD and the event access code. Never commit it.
+# .env.example is the committed template.
+.env
+.env.local
