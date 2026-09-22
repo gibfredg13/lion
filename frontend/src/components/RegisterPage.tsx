@@ -214,6 +214,21 @@ export default function RegisterPage() {
                     disabled={loading}
                   />
 
+                  {/*
+                    * Placed at the point of consent rather than at the top of the page, where it
+                    * would be scrolled past. The event runs a screen in the room: the leaderboard
+                    * is always on it, and the organisers can switch on a live feed of attempts -
+                    * so what someone types to Leo may be read by their colleagues, under their own
+                    * name. That is worth knowing before you agree to it, not after.
+                    */}
+                  <Alert color="orange" variant="light" title="This is played on a screen in the room">
+                    <Text size="sm">
+                      Your display name, level and time appear on the event leaderboard. The
+                      organisers can also put a live feed of attempts on screen, which shows what
+                      you ask Leo and how he answers, next to your name.
+                    </Text>
+                  </Alert>
+
                   <Button
                     type="submit"
                     fullWidth
