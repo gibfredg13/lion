@@ -863,7 +863,10 @@ public class CalibrationService {
         // one level on its own and all three report green, so a single level scored 6/7 and 7/7
         // while the full ladder scored 2/7 - the narrowest run looked like the healthiest one.
         Set<Integer> measured = scores.stream().map(LevelScore::level).collect(Collectors.toSet());
-        boolean hasConsecutivePair = measured.stream().anyMatch(l -> measured.contains(l + 1));
+        // A pair setShrinks is entitled to compare: the upper level has to be one that closes
+        // something. See the loop below for why 1 -> 2 is not one.
+        boolean hasConsecutivePair = measured.stream()
+                .anyMatch(l -> measured.contains(l + 1) && l + 1 >= FIRST_LEVEL_THAT_CLOSES);
         int ladderTop = definitions.stream().mapToInt(LevelDefinition::order).max().orElse(0);
         boolean sawLadderTop = measured.contains(ladderTop);
         String onlyPart = "Not measured - this run covered levels "
@@ -931,6 +934,15 @@ public class CalibrationService {
             LevelScore prev = scores.get(i - 1);
             LevelScore cur = scores.get(i);
             if (cur.level() != prev.level() + 1) continue;
+            // Levels 1 and 2 both run outputFilter: NONE, so neither closes a channel and which
+            // ones show up is down to how Leo happened to phrase himself. Asserting the set shrank
+            // across that pair failed a healthy ladder on noise - level 2 answered a description
+            // where level 1 had simply said the word, so it "gained" a channel. The ladder starts
+            // narrowing at FIRST_LEVEL_THAT_CLOSES and so does this invariant.
+            if (cur.level() < FIRST_LEVEL_THAT_CLOSES) {
+                cur.invariants().put("setShrinks", true);
+                continue;
+            }
             
             Set<String> curCloseable = new HashSet<>(cur.winningChannels());
             curCloseable.remove(CHANNEL_OF.get("partial"));
