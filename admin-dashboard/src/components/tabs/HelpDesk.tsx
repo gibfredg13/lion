@@ -1,5 +1,26 @@
 import { useState, useEffect, useCallback } from 'react';
 import { LEVEL_GUIDES, GENERATED_AT, GENERATED_FROM_LEVELS_HASH } from '../../data/solutions';
+import type { LevelGuide } from '../../data/solutions';
+
+/**
+ * The same answer key, but measured by a calibration run rather than baked in at build time.
+ *
+ * The bundled key is only ever as current as the last time someone ran the offline emitter and
+ * rebuilt two images. A calibration started from the war room measures exactly the same thing, so
+ * the server keeps it and this page prefers it when it exists.
+ */
+interface MeasuredAttack {
+  family: string; prompt: string; reply: string; why: string; how: string;
+  wins: number; runs: number;
+}
+interface MeasuredKey {
+  levels: (Omit<LevelGuide, 'attacks'> & { attacks: MeasuredAttack[] })[];
+  runId: string | null;
+  backendLabel: string | null;
+  model: string | null;
+  measuredAt: string | null;
+  measuredLevels: number[];
+}
 
 interface SolutionResult {
   level: number;
@@ -40,11 +61,11 @@ interface VerificationRun {
  * realising, which is invisible in the per-level view: seven levels each showing a list of ways
  * through look like seven different puzzles even when one sentence beats all of them.
  */
-function routeMap(): { family: string; levels: number[] }[] {
-  const families = [...new Set(LEVEL_GUIDES.flatMap(g => g.attacks.map(a => a.family)))].sort();
+function routeMap(guides: { level: number; attacks: { family: string }[] }[]): { family: string; levels: number[] }[] {
+  const families = [...new Set(guides.flatMap(g => g.attacks.map(a => a.family)))].sort();
   return families.map(family => ({
     family,
-    levels: LEVEL_GUIDES.filter(g => g.attacks.some(a => a.family === family)).map(g => g.level),
+    levels: guides.filter(g => g.attacks.some(a => a.family === family)).map(g => g.level),
   }));
 }
 
@@ -64,8 +85,21 @@ export default function HelpDesk() {
   const [check, setCheck] = useState<VerificationRun | null>(null);
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
+  const [measured, setMeasured] = useState<MeasuredKey | null>(null);
 
-  const guide = LEVEL_GUIDES.find(g => g.level === level)!;
+  /**
+   * The measured key wins when there is one, and the bundled key is the fallback rather than the
+   * other way round: a calibration run is newer than the bundle by definition, because the bundle
+   * cannot change without a rebuild. Falling back also covers the case that matters most - a fresh
+   * database, where an empty page would read as "no known way through" to whoever is helping a
+   * player.
+   */
+  const guides = measured && measured.levels.some(l => l.attacks.length > 0)
+    ? measured.levels : LEVEL_GUIDES;
+  const guide = guides.find(g => g.level === level) ?? LEVEL_GUIDES.find(g => g.level === level)!;
+  const fromCalibration = guides !== LEVEL_GUIDES;
+  const keyMeasuredOn = fromCalibration && measured?.measuredAt
+    ? new Date(measured.measuredAt).toLocaleDateString() : GENERATED_AT;
 
   const loadLatestCheck = useCallback(async () => {
     try {
@@ -78,7 +112,18 @@ export default function HelpDesk() {
     }
   }, []);
 
-  useEffect(() => { loadLatestCheck(); }, [loadLatestCheck]);
+  const loadMeasuredKey = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/solutions/key', { credentials: 'include' });
+      if (!res.ok) return;
+      const body: MeasuredKey = await res.json();
+      if (Array.isArray(body?.levels)) setMeasured(body);
+    } catch {
+      /* the bundled key still reads fine; this only ever makes it fresher */
+    }
+  }, []);
+
+  useEffect(() => { loadLatestCheck(); loadMeasuredKey(); }, [loadLatestCheck, loadMeasuredKey]);
 
   /**
    * Replays every documented prompt against the model that is answering players now.
@@ -90,7 +135,7 @@ export default function HelpDesk() {
     setChecking(true);
     setCheckError(null);
     try {
-      const solutions = LEVEL_GUIDES.flatMap(g =>
+      const solutions = guides.flatMap(g =>
         g.attacks.map(a => ({ level: g.level, family: a.family, prompt: a.prompt })));
       const res = await fetch('/api/admin/solutions/verify', {
         method: 'POST',
@@ -124,7 +169,11 @@ export default function HelpDesk() {
     return rows.some(r => r.stillWorks) ? 'works' : 'broken';
   };
 
-  const levelsChanged = check?.levelsHash != null && check.levelsHash !== GENERATED_FROM_LEVELS_HASH;
+  // Only ever a statement about the BUNDLED key: it is frozen at build time, so levels.yml can
+  // move underneath it. A key written by a calibration run was measured against whatever levels.yml
+  // said at the time of the run, so the warning would be false there.
+  const levelsChanged = !fromCalibration
+    && check?.levelsHash != null && check.levelsHash !== GENERATED_FROM_LEVELS_HASH;
   const brokenOnThisLevel = check?.results?.filter(r => r.level === level && !r.stillWorks).length ?? 0;
 
   const pick = (n: number) => {
@@ -184,7 +233,7 @@ export default function HelpDesk() {
                       </span>}.
                     </>}
                   </>
-                : <>Measured on {GENERATED_AT}. Never re-checked since — run it after changing the
+                : <>Measured on {keyMeasuredOn}. Never re-checked since — run it after changing the
                    model or the levels.</>}
             </div>
           </div>
@@ -244,7 +293,7 @@ export default function HelpDesk() {
                     <th style={{ textAlign: 'left', padding: '4px 10px 8px 0', color: '#94a3b8', fontWeight: 500 }}>
                       Route
                     </th>
-                    {LEVEL_GUIDES.map(g => (
+                    {guides.map(g => (
                       <th key={g.level} style={{ padding: '4px 8px 8px', color: '#94a3b8', fontWeight: 500 }}>
                         {g.level}
                       </th>
@@ -252,11 +301,11 @@ export default function HelpDesk() {
                   </tr>
                 </thead>
                 <tbody>
-                  {routeMap().map(({ family, levels }) => {
+                  {routeMap(guides).map(({ family, levels }) => {
                     // Data attributes rather than colour alone: a route that beats every rung is
                     // the whole reason this panel exists, and it should be assertable without a
                     // test having to read a hex value out of an inline style.
-                    const everywhere = levels.length === LEVEL_GUIDES.length;
+                    const everywhere = levels.length === guides.length;
                     return (
                       <tr
                         key={family}
@@ -271,7 +320,7 @@ export default function HelpDesk() {
                         }}>
                           {family}
                         </td>
-                        {LEVEL_GUIDES.map(g => {
+                        {guides.map(g => {
                           const documented = levels.includes(g.level);
                           // Three states, not two. The key says a route beat a level once; the
                           // check says whether it still does, and those are different claims.
@@ -325,7 +374,7 @@ export default function HelpDesk() {
 
       {/* Level picker */}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
-        {LEVEL_GUIDES.map(g => (
+        {guides.map(g => (
           <button
             key={g.level}
             onClick={() => pick(g.level)}
@@ -404,10 +453,20 @@ export default function HelpDesk() {
             </div>
             <div style={{ color: '#64748b', fontSize: '0.8rem', marginTop: '2px' }}>
               Full spoilers. Every one of these beat this level when the key was measured
-              on {GENERATED_AT}.
+              on {keyMeasuredOn}.
               {brokenOnThisLevel > 0 && (
                 <span style={{ color: '#ef4444' }}> {brokenOnThisLevel} no longer work.</span>
               )}
+            </div>
+            {/* Where these answers came from. The two keys can disagree, and someone reading a
+                prompt aloud to a player should know which one they are holding. */}
+            <div style={{ color: fromCalibration ? '#22c55e' : '#64748b', fontSize: '0.78rem', marginTop: '4px' }}>
+              {fromCalibration
+                ? <>From the last calibration run{measured?.backendLabel ? <> against <strong>{measured.backendLabel}</strong></> : null}
+                    {measured?.measuredLevels?.length && measured.measuredLevels.length < LEVEL_GUIDES.length
+                      ? <> — levels {measured.measuredLevels.join(', ')} only; the rest are from the bundled key.</>
+                      : <>.</>}</>
+                : <>From the key bundled with this dashboard. Run a calibration to measure a fresh one.</>}
             </div>
           </div>
           <button className="btn" onClick={() => setShowAnswers(s => !s)}>
@@ -422,6 +481,17 @@ export default function HelpDesk() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <span className="badge" style={{ textTransform: 'capitalize' }}>{a.family}</span>
+                    {/* How often it landed, not merely that it did once. A facilitator about to
+                        read a prompt to a stuck player needs to know it works one time in three. */}
+                    {'runs' in a && (a as MeasuredAttack).runs > 1 && (
+                      <span
+                        className="badge"
+                        title="How many of the calibration's repeats this prompt won"
+                        style={{ color: (a as MeasuredAttack).wins === (a as MeasuredAttack).runs ? '#22c55e' : '#f59e0b' }}
+                      >
+                        landed {(a as MeasuredAttack).wins} of {(a as MeasuredAttack).runs}
+                      </span>
+                    )}
                     {(() => {
                       const v = verdictFor(a.prompt);
                       if (!v) return null;

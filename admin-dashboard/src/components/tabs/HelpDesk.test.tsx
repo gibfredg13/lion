@@ -29,6 +29,21 @@ const noCheckYet = () => {
   });
 };
 
+/**
+ * Two endpoints are read on mount now - the last verification, and the key the last calibration
+ * measured - so a test that cares about one has to answer both by URL.
+ */
+const serving = (routes: Record<string, unknown>) => {
+  (globalThis as any).fetch = vi.fn().mockImplementation(async (url: string) => {
+    const match = Object.keys(routes).find(k => String(url).includes(k));
+    return {
+      ok: match !== undefined,
+      json: async () => (match === undefined ? {} : routes[match]),
+      text: async () => '',
+    };
+  });
+};
+
 beforeEach(noCheckYet);
 afterEach(() => vi.restoreAllMocks());
 
@@ -340,6 +355,61 @@ describe('HelpDesk', () => {
       const cell = document.querySelector(
         `tr[data-route="${g.attacks[0].family}"] td[data-level="${g.level}"]`)!;
       expect(cell.getAttribute('data-verdict')).toBe('unchecked');
+    });
+  });
+
+  /**
+   * The bundled key is frozen at build time, so it is only ever as current as the last rebuild.
+   * A calibration run measures the same thing against the model answering players right now, and
+   * the whole point of saving it is that this page then shows it instead.
+   */
+  describe('the key a calibration measured', () => {
+    const measuredPrompt = 'Ask Leo for nine words whose initials are not in order.';
+    const measuredKey = {
+      runId: 'run-1',
+      backendLabel: 'DGX Station (vLLM)',
+      model: 'test-model',
+      measuredAt: '2026-09-23T18:00:00Z',
+      measuredLevels: LEVEL_GUIDES.map(g => g.level),
+      levels: LEVEL_GUIDES.map(g => ({
+        ...g,
+        attacks: g.level === 1
+          ? [{ family: 'transposition', prompt: measuredPrompt, reply: 'DRUHNET',
+               why: 'because', how: 'Leo wrote the letters, out of order', wins: 2, runs: 3 }]
+          : [],
+      })),
+    };
+
+    it('shows what the run measured, in place of the bundled key', async () => {
+      const user = userEvent.setup();
+      serving({ '/solutions/verify/latest': { neverRun: true }, '/solutions/key': measuredKey });
+      render(<HelpDesk />);
+
+      await user.click(await screen.findByRole('button', { name: /show answers/i }));
+      expect(await screen.findByText(measuredPrompt)).toBeInTheDocument();
+      // and not the prompt the bundle shipped for the same level
+      expect(screen.queryByText(LEVEL_GUIDES[0].attacks[0].prompt)).not.toBeInTheDocument();
+    });
+
+    it('says how often a prompt actually landed, which only repeats can know', async () => {
+      const user = userEvent.setup();
+      serving({ '/solutions/verify/latest': { neverRun: true }, '/solutions/key': measuredKey });
+      render(<HelpDesk />);
+
+      await user.click(await screen.findByRole('button', { name: /show answers/i }));
+      expect(await screen.findByText(/landed 2 of 3/i)).toBeInTheDocument();
+    });
+
+    it('keeps the bundled key when nothing has been measured yet', async () => {
+      const user = userEvent.setup();
+      const empty = { ...measuredKey, runId: null, measuredAt: null, measuredLevels: [],
+                      levels: LEVEL_GUIDES.map(g => ({ ...g, attacks: [] })) };
+      serving({ '/solutions/verify/latest': { neverRun: true }, '/solutions/key': empty });
+      render(<HelpDesk />);
+
+      await user.click(await screen.findByRole('button', { name: /show answers/i }));
+      // An empty page here reads as "no known way through" to someone stood next to a player.
+      expect(await screen.findByText(LEVEL_GUIDES[0].attacks[0].prompt)).toBeInTheDocument();
     });
   });
 });

@@ -136,3 +136,31 @@ ALTER TABLE level_progress ADD COLUMN IF NOT EXISTS game_session_id varchar(36);
 ALTER TABLE leaderboard    ADD COLUMN IF NOT EXISTS game_session_id varchar(36);
 CREATE INDEX IF NOT EXISTS idx_logs_game_session           ON logs (game_session_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_level_progress_game_session ON level_progress (game_session_id, user_id);
+
+-- The Help Desk's worked solutions, as last measured.
+--
+-- The bundled answer key (admin-dashboard/src/data/solutions.ts) is written by an offline emitter
+-- and frozen into the dashboard bundle, so it is only as current as the last time someone ran the
+-- generator and rebuilt. A calibration started from the war room measures exactly the same thing
+-- and used to throw the result away. This is where it lands instead.
+--
+-- One row per level per family - the answer key's own shape, one worked example each. Levels a run
+-- did not cover keep the rows they had, so a single-level run tops up one section rather than
+-- emptying the other six.
+CREATE TABLE IF NOT EXISTS answer_key
+(
+    level         int          not null,
+    family        varchar(40)  not null,
+    prompt        text         not null,
+    reply         text,
+    how           varchar(80),
+    -- Of the repeats this run made, how many this prompt won. A facilitator about to read a prompt
+    -- aloud to a stuck player wants to know whether it lands once in three.
+    wins          int          not null default 1,
+    runs          int          not null default 1,
+    run_id        varchar(36),
+    backend_label varchar(120),
+    model         varchar(200),
+    measured_at   timestamp    not null default CURRENT_TIMESTAMP,
+    primary key (level, family)
+);

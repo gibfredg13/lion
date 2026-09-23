@@ -17,13 +17,16 @@ public class CalibrationController {
 
     private final CalibrationService calibrationService;
     private final StressTestService stressTestService;
+    private final AnswerKeyService answerKeyService;
 
     private final List<SseEmitter> calibrationEmitters = new CopyOnWriteArrayList<>();
     private final List<SseEmitter> stressEmitters = new CopyOnWriteArrayList<>();
 
-    public CalibrationController(CalibrationService calibrationService, StressTestService stressTestService) {
+    public CalibrationController(CalibrationService calibrationService, StressTestService stressTestService,
+                                 AnswerKeyService answerKeyService) {
         this.calibrationService = calibrationService;
         this.stressTestService = stressTestService;
+        this.answerKeyService = answerKeyService;
     }
 
     private boolean isAdmin(HttpSession session) {
@@ -33,6 +36,18 @@ public class CalibrationController {
 
     public record CalibrationStartRequest(List<Integer> levels, List<String> families,
                                           Integer attempts, Integer repeats) {}
+
+    /**
+     * The worked solutions as last measured, for the Help Desk.
+     * <p>
+     * Empty until a calibration has run, which is the signal for the dashboard to go on showing
+     * the key bundled at build time rather than an empty page.
+     */
+    @GetMapping("/solutions/key")
+    public AnswerKeyService.MeasuredKey measuredAnswerKey(HttpSession session) {
+        if (!isAdmin(session)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin access required");
+        return answerKeyService.current();
+    }
 
     /** Which levels calibration can be pointed at, for the level picker in the war room. */
     @GetMapping("/calibration/levels")

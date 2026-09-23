@@ -31,6 +31,7 @@ public class CalibrationService {
 
     private final LevelDefinitionService levelDefinitionService;
     private final CalibrationRunRepository repository;
+    private final AnswerKeyService answerKeyService;
     private final LlmBackendRouter router;
     /** The backend this run is pinned to; see {@link LlmBackendRouter#pin()}. */
     private volatile LlmBackendRouter.Backend llmProvider;
@@ -315,10 +316,11 @@ public class CalibrationService {
     }
 
     public CalibrationService(LevelDefinitionService levelDefinitionService, LlmBackendRouter router,
-                              CalibrationRunRepository repository) {
+                              CalibrationRunRepository repository, AnswerKeyService answerKeyService) {
         this.levelDefinitionService = levelDefinitionService;
         this.router = router;
         this.repository = repository;
+        this.answerKeyService = answerKeyService;
         this.llmProvider = router.pin();
     }
 
@@ -708,6 +710,11 @@ public class CalibrationService {
     
     private void saveToHistory(CalibrationRun run) {
         lastCompleted = run;
+        // The run just proved which prompts still beat which level. That is the Help Desk's answer
+        // key, measured - so it is written there rather than thrown away, for the levels this run
+        // covered. Saved before the history row on purpose: the history row is the bulky one, and
+        // the answer key is the part someone is waiting on.
+        answerKeyService.record(run);
         var spec = llmProvider.spec();
         var tokens = run.tokens() == null ? TokenUsage.empty() : run.tokens();
         repository.save(run.id(), CalibrationRunRepository.CALIBRATION, run.status(),

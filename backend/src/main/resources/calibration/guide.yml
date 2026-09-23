@@ -4,6 +4,10 @@
 # measured, and writes docs/SOLUTIONS.md and admin-dashboard/src/data/solutions.ts. A generator that
 # writes its own explanations writes bad explanations; a human who maintains their own evidence lets
 # it go stale. So the split is: the prose lives here, the evidence is measured.
+#
+# It lives in MAIN resources, not test, because AnswerKeyService reads it too: a calibration run
+# started from the dashboard writes the same join straight into the Help Desk, without waiting for
+# someone to run the emitter and rebuild the bundle.
 
 families:
   direct:
@@ -47,6 +51,10 @@ defences:
   NONE: "Nothing checks Leo's answer. Whatever he says reaches the player."
   PLAIN: "A filter reads every answer and blocks it if the word is written out or spelled letter by letter. Acrostics get through, deliberately."
   REVERSED: "The filter blocks the word written out, spelled out, or backwards."
+  # Were missing entirely, so levels 3 and 4 shipped with an EMPTY defence line in the answer key -
+  # the one sentence that tells a facilitator what they are up against.
+  SEMANTIC: "A second model reads every answer and blocks it if the answer describes what the word MEANS - a definition, a riddle, a translation, a story. It is not looking at the letters, so spelling and acrostics get through."
+  PLAIN_SEMANTIC: "The word written out is blocked, and a second model blocks any answer that describes what it MEANS. The letters in another shape - out of order, as first letters - are not what either guard is reading for."
   NORMALISED: "The filter blocks every disguise anyone enumerated: written out, spelled out, backwards, lookalike letters, accents, leetspeak, base64, hex, binary, A1Z26, Morse, NATO phonetic, rotation ciphers, and acrostics."
   JUDGE: "Everything the level below blocks, and a second model reads every answer and blocks it if a reader could name the word from it - a riddle, a definition, a translation, a story. It is not asked whether the answer gives away part of the word."
 
