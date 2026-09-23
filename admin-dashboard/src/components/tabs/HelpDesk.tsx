@@ -108,6 +108,19 @@ export default function HelpDesk() {
   const verdictFor = (prompt: string): SolutionResult | undefined =>
     check?.results?.find(r => r.prompt === prompt);
 
+  /**
+   * What the last check said about a route at a level.
+   * <p>
+   * A family can have more than one documented prompt at a level, and they do not have to agree -
+   * so the route counts as open if any of them still landed. That matches how a player uses this:
+   * they need one way through, not every way.
+   */
+  const routeVerdict = (level: number, family: string): 'works' | 'broken' | 'unchecked' => {
+    const rows = check?.results?.filter(r => r.level === level && r.family === family) ?? [];
+    if (rows.length === 0) return 'unchecked';
+    return rows.some(r => r.stillWorks) ? 'works' : 'broken';
+  };
+
   const levelsChanged = check?.levelsHash != null && check.levelsHash !== GENERATED_FROM_LEVELS_HASH;
   const brokenOnThisLevel = check?.results?.filter(r => r.level === level && !r.stillWorks).length ?? 0;
 
@@ -247,19 +260,33 @@ export default function HelpDesk() {
                         }}>
                           {family}
                         </td>
-                        {LEVEL_GUIDES.map(g => (
-                          <td
-                            key={g.level}
-                            data-level={g.level}
-                            data-win={levels.includes(g.level) ? 'true' : 'false'}
-                            style={{
-                              padding: '6px 8px', textAlign: 'center',
-                              color: levels.includes(g.level) ? (everywhere ? '#ff8c00' : '#22c55e') : '#334155',
-                            }}
-                          >
-                            {levels.includes(g.level) ? '●' : '·'}
-                          </td>
-                        ))}
+                        {LEVEL_GUIDES.map(g => {
+                          const documented = levels.includes(g.level);
+                          // Three states, not two. The key says a route beat a level once; the
+                          // check says whether it still does, and those are different claims.
+                          const verdict = documented ? routeVerdict(g.level, family) : 'unchecked';
+                          const broken = documented && verdict === 'broken';
+                          return (
+                            <td
+                              key={g.level}
+                              data-level={g.level}
+                              data-win={documented ? 'true' : 'false'}
+                              data-verdict={documented ? verdict : 'none'}
+                              title={!documented ? 'never beat this level'
+                                : verdict === 'works' ? 'confirmed by the last check'
+                                : broken ? 'in the answer key, but it did not work on the last check'
+                                : 'in the answer key, not checked since'}
+                              style={{
+                                padding: '6px 8px', textAlign: 'center',
+                                color: !documented ? '#334155'
+                                  : broken ? '#ef4444'
+                                  : everywhere ? '#ff8c00' : '#22c55e',
+                              }}
+                            >
+                              {!documented ? '·' : broken ? '✗' : '●'}
+                            </td>
+                          );
+                        })}
                       </tr>
                     );
                   })}
@@ -267,6 +294,14 @@ export default function HelpDesk() {
               </table>
             </div>
             <p style={{ color: '#94a3b8', fontSize: '0.8rem', margin: '14px 0 0', lineHeight: 1.6 }}>
+              {check
+                ? <><span style={{ color: '#22c55e' }}>●</span> confirmed working on the last check,{' '}
+                    <span style={{ color: '#ef4444' }}>✗</span> in the answer key but no longer landing,{' '}
+                    <span style={{ color: '#334155' }}>·</span> never beat that level.{' '}</>
+                : <><span style={{ color: '#22c55e' }}>●</span> beat that level when the key was
+                    measured — re-check above to see whether it still does.{' '}</>}
+            </p>
+            <p style={{ color: '#94a3b8', fontSize: '0.8rem', margin: '10px 0 0', lineHeight: 1.6 }}>
               A long unbroken row is a rung the player skipped. The rows in{' '}
               <span style={{ color: '#ff8c00', fontWeight: 700 }}>orange</span> work at every level —
               they are level 7's own solutions, and nothing lower down can close them. A player who

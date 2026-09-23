@@ -276,4 +276,70 @@ describe('HelpDesk', () => {
       }
     });
   });
+
+  describe('the route map reflects the last check', () => {
+    const runMarking = (brokenAt: {level: number; family: string}[]) => ({
+      id: 'c', completedAt: new Date().toISOString(),
+      backendLabel: 'DGX Station (vLLM)', model: 'qwen',
+      levelsHash: GENERATED_FROM_LEVELS_HASH,
+      total: everyPrompt.length, working: 0, broken: brokenAt.length,
+      results: LEVEL_GUIDES.flatMap(g => g.attacks.map(a => ({
+        level: g.level, family: a.family, prompt: a.prompt,
+        stillWorks: !brokenAt.some(b => b.level === g.level && b.family === a.family),
+        how: a.how, response: a.reply, blockedBy: null, error: null,
+      }))),
+    });
+    const respond = (run: unknown) => {
+      (globalThis as any).fetch = vi.fn().mockResolvedValue({
+        ok: true, json: async () => run, text: async () => '',
+      });
+    };
+    const openMap = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(screen.getByRole('button', { name: /Show map/i }));
+    };
+
+    it('marks a documented route that no longer lands, without hiding it', async () => {
+      const victim = { level: LEVEL_GUIDES[0].level, family: LEVEL_GUIDES[0].attacks[0].family };
+      respond(runMarking([victim]));
+      const user = userEvent.setup();
+      render(<HelpDesk />);
+      await user.click(screen.getByRole('button', { name: /Re-check against the live model/i }));
+      await waitFor(() => expect(screen.getByText(/still land/i)).toBeInTheDocument());
+      await openMap(user);
+
+      const row = document.querySelector(`tr[data-route="${victim.family}"]`)!;
+      const cell = row.querySelector(`td[data-level="${victim.level}"]`)!;
+      // Still documented - the key has not changed - but no longer confirmed.
+      expect(cell.getAttribute('data-win')).toBe('true');
+      expect(cell.getAttribute('data-verdict')).toBe('broken');
+      expect(cell.textContent).toBe('✗');
+    });
+
+    it('confirms the routes that still land', async () => {
+      respond(runMarking([]));
+      const user = userEvent.setup();
+      render(<HelpDesk />);
+      await user.click(screen.getByRole('button', { name: /Re-check against the live model/i }));
+      await waitFor(() => expect(screen.getByText(/still land/i)).toBeInTheDocument());
+      await openMap(user);
+
+      const g = LEVEL_GUIDES[0];
+      const cell = document.querySelector(
+        `tr[data-route="${g.attacks[0].family}"] td[data-level="${g.level}"]`)!;
+      expect(cell.getAttribute('data-verdict')).toBe('works');
+      expect(cell.textContent).toBe('●');
+    });
+
+    it('says the map is unverified until a check has run', async () => {
+      const user = userEvent.setup();
+      render(<HelpDesk />);
+      await openMap(user);
+      expect(screen.getByText(/re-check above to see whether it still does/i)).toBeInTheDocument();
+
+      const g = LEVEL_GUIDES[0];
+      const cell = document.querySelector(
+        `tr[data-route="${g.attacks[0].family}"] td[data-level="${g.level}"]`)!;
+      expect(cell.getAttribute('data-verdict')).toBe('unchecked');
+    });
+  });
 });
