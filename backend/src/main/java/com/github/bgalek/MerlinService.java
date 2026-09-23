@@ -81,7 +81,7 @@ class MerlinService {
     Answer respond(HttpSession httpSession, int currentLevel, String prompt) {
         // Admin can disable individual levels at runtime via the admin war room dashboard
         if (!levelGateService.isLevelEnabled(currentLevel)) {
-            return Answer.blocked("\uD83E\uDD81 Leo is taking a break at this level. The game master has temporarily disabled it. Check back soon!", "level-disabled");
+            return Answer.blocked("This level is switched off at the moment. Check with the organisers.", "level-disabled");
         }
         MerlinLevel level = merlinLevelRepository.getLevel(currentLevel);
         if (level.inputFilter(prompt)) return Answer.blocked(level.inputFilterResponse(), "input-filter");
@@ -96,10 +96,10 @@ class MerlinService {
                     httpSession.getId(), currentLevel, prompt), key ->
                     llmProvider.chat(request));
         } catch (com.github.bgalek.llm.LlmBusyException e) {
-            return Answer.blocked("\uD83E\uDD81 Leo is busy facing another challenger. Give him a moment and ask again.", "llm-busy");
+            return Answer.blocked("Too many questions at once right now - wait a moment and send that again.", "llm-busy");
         } catch (Exception e) {
             logger.error("LLM call failed at level {}", currentLevel, e);
-            return Answer.blocked("\uD83E\uDD81 Leo's roar caught in his throat. Try asking again.", "llm-error");
+            return Answer.blocked("Something went wrong on our side, not yours - that was not a guardrail. Please try again.", "llm-error");
         }
         String response = llm == null ? null : llm.content();
         // If the output exposes the secret, return the canned guardrail response.
@@ -112,7 +112,7 @@ class MerlinService {
                 return new Answer(level.outputFilterResponse(), true, "output-filter", llm.inputTokens(), llm.outputTokens());
             }
         } catch (com.github.bgalek.llm.LlmBusyException e) {
-            return Answer.blocked("\uD83E\uDD81 Leo is busy facing another challenger. Give him a moment and ask again.", "judge-busy");
+            return Answer.blocked("Too many questions at once right now - wait a moment and send that again.", "judge-busy");
         }
         return Answer.plain(presentable(response), llm == null ? 0 : llm.inputTokens(), llm == null ? 0 : llm.outputTokens());
     }

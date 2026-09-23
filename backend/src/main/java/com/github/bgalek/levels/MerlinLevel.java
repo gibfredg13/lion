@@ -17,11 +17,11 @@ public interface MerlinLevel {
     }
 
     default String inputFilterResponse() {
-        return "🦁 Nice try! I spotted that tactic. Leo doesn't fall for that.";
+        return "I will not answer that. Try asking a different way.";
     }
 
     default String outputFilterResponse() {
-        return "🦁 I almost revealed it — but my defenses caught that. Try a different approach!";
+        return "I started to answer, then thought better of it. Try a different way in.";
     }
 
     default String getModel() {
