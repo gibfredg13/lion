@@ -400,11 +400,13 @@ public class AdminApiController {
     public record AccessCodeRequest(String code) {}
 
     @GetMapping("/access-code")
-    public Map<String, String> getAccessCode(HttpSession session) {
+    public Map<String, Object> getAccessCode(HttpSession session) {
         if (!isAdmin(session)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin access required");
         }
-        return Map.of("code", eventAccessCodeService.getCurrentCode());
+        return Map.of(
+                "code", eventAccessCodeService.getCurrentCode(),
+                "required", eventAccessCodeService.isRequired());
     }
 
     @PutMapping("/access-code")
@@ -413,6 +415,22 @@ public class AdminApiController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin access required");
         }
         eventAccessCodeService.updateCode(request.code());
+    }
+
+    public record AccessCodeRequiredRequest(boolean required) {}
+
+    /**
+     * Turns the registration gate on and off. With it off, who may register is decided by the
+     * allowed email domains alone.
+     */
+    @PutMapping("/access-code/required")
+    public Map<String, Object> setAccessCodeRequired(HttpSession session,
+                                                     @RequestBody AccessCodeRequiredRequest request) {
+        if (!isAdmin(session)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin access required");
+        }
+        eventAccessCodeService.setRequired(request.required());
+        return Map.of("required", eventAccessCodeService.isRequired());
     }
 
     @GetMapping("/dgx-health")

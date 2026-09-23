@@ -1,5 +1,5 @@
 import { Box, Button, Container, Group, PasswordInput, Stack, Text, TextInput, Title, Alert } from "@mantine/core";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
 /**
@@ -28,9 +28,25 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [accessCode, setAccessCode] = useState("");
+  /**
+   * Whether the organisers are gating registration on a code. Starts true and stays true if the
+   * lookup fails: a network blip must not quietly open registration to anyone who loads the page.
+   */
+  const [accessCodeRequired, setAccessCodeRequired] = useState(true);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    fetch("/api/event-config")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d && typeof d.accessCodeRequired === "boolean") setAccessCodeRequired(d.accessCodeRequired);
+      })
+      .catch(() => {
+        // Left required. See the note on the state above.
+      });
+  }, []);
 
   const passwordStrength = PASSWORD_REQUIREMENTS.filter((req) => req.re.test(password));
   const isPasswordValid = passwordStrength.length === PASSWORD_REQUIREMENTS.length;
@@ -40,7 +56,7 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
 
-    if (!accessCode.trim()) {
+    if (accessCodeRequired && !accessCode.trim()) {
       setError("Event Access Code is required");
       return;
     }
@@ -127,19 +143,23 @@ export default function RegisterPage() {
 
               <form onSubmit={handleRegister}>
                 <Stack gap="md">
-                  <Box>
-                    <TextInput
-                      label="Event Access Code"
-                      placeholder="Enter the code provided at the event"
-                      required
-                      value={accessCode}
-                      onChange={(e) => setAccessCode(e.currentTarget.value)}
-                      disabled={loading}
-                    />
-                    <Text size="xs" c="dimmed" mt={4}>
-                      Ask the event organizer for the access code
-                    </Text>
-                  </Box>
+                  {/* Hidden entirely when the organisers have switched the gate off, so nobody
+                      wonders whether they were meant to have been given a code. */}
+                  {accessCodeRequired && (
+                    <Box>
+                      <TextInput
+                        label="Event Access Code"
+                        placeholder="Enter the code provided at the event"
+                        required
+                        value={accessCode}
+                        onChange={(e) => setAccessCode(e.currentTarget.value)}
+                        disabled={loading}
+                      />
+                      <Text size="xs" c="dimmed" mt={4}>
+                        Ask the event organizer for the access code
+                      </Text>
+                    </Box>
+                  )}
 
                   <TextInput
                     label="Email"

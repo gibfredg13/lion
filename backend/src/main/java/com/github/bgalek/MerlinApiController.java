@@ -30,10 +30,28 @@ class MerlinApiController {
     /** Bounds how fast one player can consume shared LLM capacity. */
     private final RateLimiter questionLimiter = new RateLimiter(20, Duration.ofMinutes(1));
 
+    private final com.github.bgalek.auth.EventAccessCodeService eventAccessCodeService;
+
     public MerlinApiController(MerlinService merlinService,
-                               com.github.bgalek.admin.AdminLeaderboardService leaderboardService) {
+                               com.github.bgalek.admin.AdminLeaderboardService leaderboardService,
+                               com.github.bgalek.auth.EventAccessCodeService eventAccessCodeService) {
         this.merlinService = merlinService;
         this.leaderboardService = leaderboardService;
+        this.eventAccessCodeService = eventAccessCodeService;
+    }
+
+    /**
+     * What the registration form needs to know before anyone has an account.
+     * <p>
+     * Unauthenticated by necessity - the people who read it are the ones who cannot log in yet -
+     * so it answers one question and nothing else. <strong>It must never return the code
+     * itself.</strong> A config endpoint that helpfully included it would hand the gate to anyone
+     * who can reach the URL, which is the entire population the gate exists to filter.
+     */
+    @GetMapping("/event-config")
+    ResponseEntity<java.util.Map<String, Object>> eventConfig() {
+        return ResponseEntity.ok(java.util.Map.of(
+                "accessCodeRequired", eventAccessCodeService.isRequired()));
     }
 
     /**

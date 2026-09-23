@@ -75,11 +75,13 @@ class MerlinConfiguration {
             com.github.bgalek.admin.LlmBackendAdminService backendAdminService,
             com.github.bgalek.admin.BackendHealthMonitor healthMonitor,
             com.github.bgalek.tv.TvService tvService,
+            com.github.bgalek.auth.EventAccessCodeService eventAccessCodeService,
             MerlinConfigurationProperties properties) {
         return args -> {
             backendAdminService.restorePersistedChoice(properties.llm.forceBackendOrDefault());
             healthMonitor.start();
             tvService.loadFeedSetting();
+            eventAccessCodeService.loadFromSettings();
         };
     }
 
