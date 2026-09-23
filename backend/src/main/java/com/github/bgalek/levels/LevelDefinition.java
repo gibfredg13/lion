@@ -50,6 +50,33 @@ public record LevelDefinition(
          * Everything a deterministic check can enumerate.
          */
         NORMALISED,
+        /**
+         * The judge alone: blocks a reply that gives away the word's <em>meaning</em>, and nothing
+         * else.
+         * <p>
+         * Not a rung on the same ladder as the four above - it is a different axis. Those all read
+         * the text for the word in some costume; this one reads it for the idea and does not care
+         * about the letters at all. That is what makes it usable at a level whose own solution is
+         * written-channel: a reply spelling T. H. U. N. D. E. R. describes nothing, so it passes,
+         * while "the sound that follows lightning" does not.
+         * <p>
+         * It exists because levels with only string matching had no defence against being asked to
+         * describe rather than name, so one prompt in that shape ran from level 1 until it met the
+         * judge at the top. Measured over thirteen calibration runs, closing those prompts one at a
+         * time by keyword just promoted the next prompt in the same family.
+         * <p>
+         * Costs a second model call per turn, like {@link #JUDGE}.
+         */
+        SEMANTIC,
+        /**
+         * {@link #PLAIN} and {@link #SEMANTIC} together: the word must not be written out, and its
+         * meaning must not be given away either.
+         * <p>
+         * Spelled out as its own value rather than layered, because these two are on different axes
+         * and the ladder above is not. A level that wants both is not one rung further up; it is a
+         * level guarding the word and the idea at once.
+         */
+        PLAIN_SEMANTIC,
         /** Also asks a second model whether the response gives anything away. */
         JUDGE
     }

@@ -83,6 +83,15 @@ public class ConfigurableLevel implements MerlinLevel {
             // did not. What survives it is the word never being written at all - a translation, a
             // description, a story - which is what the level above answers.
             case NORMALISED -> blockedDeterministically(output, secret);
+            // The judge WITHOUT the deterministic checks, which is the whole point: it closes the
+            // route that describes the word while leaving every written form of it alone, so a
+            // level whose own solution is spelling or an acrostic can still use it.
+            case SEMANTIC -> judgeSaysLeaked(output, secret);
+            // Both axes at once. Without the PLAIN half this level would stop blocking the word
+            // written out, which would make it easier than the level below it in the one way that
+            // has always been checked.
+            case PLAIN_SEMANTIC -> SecretDetector.containsPlainly(output, secret)
+                    || judgeSaysLeaked(output, secret);
             // The judge reads for meaning, so it closes the routes NORMALISED is blind to: riddles,
             // definitions, translations, a story. Measured, it also undoes every order-destroying
             // transform we tried - jumbles, reverse pairs, vowel strips - which is more than we
