@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import HelpDesk from './HelpDesk';
-import { LEVEL_GUIDES } from '../../data/solutions';
+import { LEVEL_GUIDES, GENERATED_FROM_LEVELS_HASH } from '../../data/solutions';
 
 /**
  * The war room's Help Desk tab.
@@ -21,6 +21,16 @@ import { LEVEL_GUIDES } from '../../data/solutions';
 
 const everyPrompt = LEVEL_GUIDES.flatMap(g => g.attacks.map(a => a.prompt));
 const everyHint = LEVEL_GUIDES.flatMap(g => g.hints);
+
+/** The existing suite never touched the network; the freshness check does. */
+const noCheckYet = () => {
+  (globalThis as any).fetch = vi.fn().mockResolvedValue({
+    ok: true, json: async () => ({ neverRun: true }), text: async () => '',
+  });
+};
+
+beforeEach(noCheckYet);
+afterEach(() => vi.restoreAllMocks());
 
 describe('HelpDesk', () => {
   it('shows no prompt, reply or hint until one is asked for', () => {
@@ -146,6 +156,123 @@ describe('HelpDesk', () => {
       const map = screen.getByRole('table');
       for (const prompt of everyPrompt) {
         expect(within(map).queryByText(prompt)).not.toBeInTheDocument();
+      }
+    });
+  });
+
+  describe('is the answer key still true', () => {
+    /** One verification response covering every documented prompt. */
+    const runWith = (broken: string[], extra: Record<string, unknown> = {}) => ({
+      id: 'check-1',
+      completedAt: new Date().toISOString(),
+      backendLabel: 'DGX Station (vLLM)',
+      model: 'nvidia/Qwen3.6-35B-A3B-NVFP4',
+      levelsHash: GENERATED_FROM_LEVELS_HASH,
+      total: everyPrompt.length,
+      working: everyPrompt.length - broken.length,
+      broken: broken.length,
+      results: LEVEL_GUIDES.flatMap(g => g.attacks.map(a => ({
+        level: g.level,
+        family: a.family,
+        prompt: a.prompt,
+        stillWorks: !broken.includes(a.prompt),
+        how: broken.includes(a.prompt) ? null : a.how,
+        response: broken.includes(a.prompt) ? 'I will not tell you that.' : a.reply,
+        blockedBy: null,
+        error: null,
+      }))),
+      ...extra,
+    });
+
+    const respondWith = (run: unknown) => {
+      (globalThis as any).fetch = vi.fn().mockResolvedValue({
+        ok: true, json: async () => run, text: async () => '',
+      });
+    };
+
+    it('admits it has never been re-checked', async () => {
+      render(<HelpDesk />);
+      expect(await screen.findByText(/Never re-checked since/i)).toBeInTheDocument();
+    });
+
+    it('sends every documented prompt, with the level it belongs to', async () => {
+      const user = userEvent.setup();
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true, json: async () => ({ neverRun: true }), text: async () => '',
+      });
+      (globalThis as any).fetch = fetchMock;
+      render(<HelpDesk />);
+
+      await user.click(screen.getByRole('button', { name: /Re-check against the live model/i }));
+
+      await waitFor(() => {
+        const post = fetchMock.mock.calls.find(c => c[1]?.method === 'POST');
+        expect(post).toBeTruthy();
+        const sent = JSON.parse(post![1].body).solutions;
+        // Every one, not just the level on screen - the whole key is what goes stale.
+        expect(sent).toHaveLength(everyPrompt.length);
+        expect(sent.every((x: any) => typeof x.level === 'number' && x.prompt)).toBe(true);
+      });
+    });
+
+    it('reports the tally and the model it was checked against', async () => {
+      respondWith(runWith([]));
+      const user = userEvent.setup();
+      render(<HelpDesk />);
+      await user.click(screen.getByRole('button', { name: /Re-check against the live model/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText(new RegExp(`${everyPrompt.length} of ${everyPrompt.length} still land`))).toBeInTheDocument();
+      });
+      expect(screen.getByText(/DGX Station \(vLLM\)/)).toBeInTheDocument();
+    });
+
+    it('marks a solution that has stopped working, where the facilitator will read it', async () => {
+      const victim = LEVEL_GUIDES[0].attacks[0];
+      respondWith(runWith([victim.prompt]));
+      const user = userEvent.setup();
+      render(<HelpDesk />);
+      await user.click(screen.getByRole('button', { name: /Re-check against the live model/i }));
+      await waitFor(() => expect(screen.getByText(/1 documented solution no longer work/i)).toBeInTheDocument());
+
+      // The warning is worthless unless it survives to the place the prompt is shown.
+      await user.click(screen.getByRole('button', { name: /Show answers/i }));
+      expect(screen.getByText(/Leo no longer gives it away/i)).toBeInTheDocument();
+      expect(screen.getByText(/1 no longer work/i)).toBeInTheDocument();
+    });
+
+    it('says so when the levels have changed underneath the key', async () => {
+      respondWith(runWith([], { levelsHash: 'deadbeefcafe' }));
+      const user = userEvent.setup();
+      render(<HelpDesk />);
+      await user.click(screen.getByRole('button', { name: /Re-check against the live model/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText(/levels.yml has changed since this key was generated/i)).toBeInTheDocument();
+      });
+    });
+
+    it('stays quiet when the levels have not changed', async () => {
+      respondWith(runWith([]));
+      const user = userEvent.setup();
+      render(<HelpDesk />);
+      await user.click(screen.getByRole('button', { name: /Re-check against the live model/i }));
+
+      await waitFor(() => expect(screen.getByText(/still land/i)).toBeInTheDocument());
+      expect(screen.queryByText(/levels.yml has changed/i)).not.toBeInTheDocument();
+    });
+
+    it('still spoils nothing before answers are asked for', async () => {
+      const victim = LEVEL_GUIDES[0].attacks[0];
+      respondWith(runWith([victim.prompt]));
+      const user = userEvent.setup();
+      render(<HelpDesk />);
+      await user.click(screen.getByRole('button', { name: /Re-check against the live model/i }));
+      await waitFor(() => expect(screen.getByText(/Regenerating the key is what fixes this/i)).toBeInTheDocument());
+
+      // A check result must not become a back door onto the answers.
+      for (const prompt of everyPrompt) {
+        expect(screen.queryByText(prompt)).not.toBeInTheDocument();
       }
     });
   });

@@ -275,6 +275,47 @@ public class CalibrationService {
         return resolved == null ? backend.spec().model() : resolved;
     }
 
+    /**
+     * What replaying one documented solution against the live model produced.
+     *
+     * @param blockedBy "input" or "output" when a guardrail stopped it, null otherwise
+     */
+    public record SolutionOutcome(boolean stillWorks, String how, String response,
+                                  String blockedBy, String error) {}
+
+    /**
+     * Replays one of the Help Desk's worked solutions against the model that is answering now.
+     * <p>
+     * Deliberately routed through this class rather than given its own copy of the rules: whether a
+     * reply gives the word away is decided by {@link #humanCouldRecover}, and a verifier that made
+     * that judgement differently from the calibration harness would eventually disagree with it and
+     * be believed anyway.
+     */
+    public SolutionOutcome replaySolution(int level, String prompt) {
+        LevelDefinition definition = levelDefinitionService.definition(level);
+        if (definition == null) {
+            return new SolutionOutcome(false, null, null, null, "Level " + level + " no longer exists");
+        }
+        LlmBackendRouter.Backend backend = router.pin();
+        ConfigurableLevel configurable = new ConfigurableLevel(definition, backend);
+        if (configurable.inputFilter(prompt)) {
+            // The level now refuses the question outright, which is a perfectly good reason for a
+            // worked solution to have stopped working.
+            return new SolutionOutcome(false, null, null, "input", null);
+        }
+        try {
+            String response = backend.chat(configurable.prompt(prompt, SECRET)).content();
+            if (configurable.outputFilter(response, SECRET)) {
+                return new SolutionOutcome(false, null, response, "output", null);
+            }
+            boolean works = humanCouldRecover(backend, response);
+            return new SolutionOutcome(works, works ? howItArrived(response) : null, response, null, null);
+        } catch (Exception e) {
+            return new SolutionOutcome(false, null, null, null,
+                    e.getClass().getSimpleName() + (e.getMessage() == null ? "" : ": " + e.getMessage()));
+        }
+    }
+
     /** The backend this run is pinned to, for the dashboard to show while it runs. */
     public LlmBackendRouter.Backend pinnedBackend() {
         return llmProvider;

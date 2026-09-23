@@ -36,6 +36,7 @@ public class AdminApiController {
     private final com.github.bgalek.llm.LlmBackendRouter router;
     private final com.github.bgalek.session.GameSessionService gameSessions;
     private final com.github.bgalek.tv.TvService tvService;
+    private final SolutionVerifierService solutionVerifier;
     private final LlmBackendAdminService backendAdminService;
     private final JdbcClient jdbcClient;
     private final LevelGateService levelGateService;
@@ -52,6 +53,7 @@ public class AdminApiController {
             com.github.bgalek.llm.LlmBackendRouter router,
             com.github.bgalek.session.GameSessionService gameSessions,
             com.github.bgalek.tv.TvService tvService,
+            SolutionVerifierService solutionVerifier,
             LlmBackendAdminService backendAdminService,
             JdbcClient jdbcClient,
             LevelGateService levelGateService,
@@ -71,6 +73,7 @@ public class AdminApiController {
         this.router = router;
         this.gameSessions = gameSessions;
         this.tvService = tvService;
+        this.solutionVerifier = solutionVerifier;
         this.backendAdminService = backendAdminService;
         this.jdbcClient = jdbcClient;
         this.levelGateService = levelGateService;
@@ -303,6 +306,35 @@ public class AdminApiController {
     }
 
     // ============ HACKATHON LION'S DEN ENDPOINTS ============
+
+    // ============ WORKED SOLUTIONS ============
+
+    public record VerifySolutionsRequest(List<SolutionVerifierService.SolutionRef> solutions) {}
+
+    /**
+     * Replays the Help Desk's worked solutions against the live model.
+     * <p>
+     * The prompts are posted by the dashboard rather than read from a file here, so that what is
+     * checked is exactly what is on screen. A copy kept server-side would be a second answer key,
+     * and the one that drifted would be the one nobody was looking at.
+     */
+    @PostMapping("/solutions/verify")
+    public ResponseEntity<?> verifySolutions(HttpSession session, @RequestBody VerifySolutionsRequest request) {
+        if (!isAdmin(session)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin access required");
+        if (request == null || request.solutions() == null || request.solutions().isEmpty()) {
+            return ResponseEntity.badRequest().body("No solutions to check");
+        }
+        return ResponseEntity.ok(solutionVerifier.verify(request.solutions()));
+    }
+
+    /** The last check, so the Help Desk can show its age without spending a run to find out. */
+    @GetMapping("/solutions/verify/latest")
+    public ResponseEntity<?> latestSolutionCheck(HttpSession session) {
+        if (!isAdmin(session)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin access required");
+        return solutionVerifier.latest()
+                .<ResponseEntity<?>>map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.ok(Map.of("neverRun", true)));
+    }
 
     // ============ TV DISPLAY ============
 

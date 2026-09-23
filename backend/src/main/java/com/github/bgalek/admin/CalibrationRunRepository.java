@@ -28,6 +28,8 @@ public class CalibrationRunRepository {
 
     public static final String CALIBRATION = "CALIBRATION";
     public static final String STRESS_TEST = "STRESS_TEST";
+    /** A replay of the Help Desk's worked solutions against the model that is answering now. */
+    public static final String SOLUTION_CHECK = "SOLUTION_CHECK";
 
     private final JdbcClient jdbcClient;
     /**

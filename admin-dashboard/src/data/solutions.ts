@@ -4,6 +4,10 @@
 // real. Regenerate with CALIBRATE=true CALIBRATE_EMIT=<repo root> ./gradlew :backend:test
 // --tests '*LevelCalibrationTest*'
 
+/** When this key was measured, and from which levels.yml - see SOLUTION_PROVENANCE below. */
+export const GENERATED_AT = "2026-09-06";
+export const GENERATED_FROM_LEVELS_HASH = "bc887553c710";
+
 export interface Attack { family: string; prompt: string; reply: string; why: string; how: string; }
 export interface LevelGuide {
   level: number; name: string; summary: string; defence: string;

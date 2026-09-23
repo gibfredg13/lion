@@ -1,5 +1,29 @@
-import { useState } from 'react';
-import { LEVEL_GUIDES } from '../../data/solutions';
+import { useState, useEffect, useCallback } from 'react';
+import { LEVEL_GUIDES, GENERATED_AT, GENERATED_FROM_LEVELS_HASH } from '../../data/solutions';
+
+interface SolutionResult {
+  level: number;
+  family: string;
+  prompt: string;
+  stillWorks: boolean;
+  how: string | null;
+  response: string | null;
+  blockedBy: string | null;
+  error: string | null;
+}
+
+interface VerificationRun {
+  id: string;
+  completedAt: string;
+  backendLabel: string;
+  model: string;
+  levelsHash: string | null;
+  total: number;
+  working: number;
+  broken: number;
+  results: SolutionResult[];
+  neverRun?: boolean;
+}
 
 /**
  * The routes that keep working all the way up.
@@ -34,8 +58,58 @@ export default function HelpDesk() {
   const [openAttack, setOpenAttack] = useState<number | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [showMap, setShowMap] = useState(false);
+  const [check, setCheck] = useState<VerificationRun | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [checkError, setCheckError] = useState<string | null>(null);
 
   const guide = LEVEL_GUIDES.find(g => g.level === level)!;
+
+  const loadLatestCheck = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/solutions/verify/latest', { credentials: 'include' });
+      if (!res.ok) return;
+      const body = await res.json();
+      setCheck(body?.neverRun ? null : body);
+    } catch {
+      /* the answer key still reads fine without a check; it just cannot vouch for itself */
+    }
+  }, []);
+
+  useEffect(() => { loadLatestCheck(); }, [loadLatestCheck]);
+
+  /**
+   * Replays every documented prompt against the model that is answering players now.
+   *
+   * The prompts are sent from here rather than read from a file on the server, so that what gets
+   * checked is exactly what is on this screen.
+   */
+  const runCheck = async () => {
+    setChecking(true);
+    setCheckError(null);
+    try {
+      const solutions = LEVEL_GUIDES.flatMap(g =>
+        g.attacks.map(a => ({ level: g.level, family: a.family, prompt: a.prompt })));
+      const res = await fetch('/api/admin/solutions/verify', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ solutions }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setCheck(await res.json());
+    } catch (e: any) {
+      setCheckError(e?.message || 'The check did not finish');
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  /** What the last check said about one particular prompt, if it has been checked at all. */
+  const verdictFor = (prompt: string): SolutionResult | undefined =>
+    check?.results?.find(r => r.prompt === prompt);
+
+  const levelsChanged = check?.levelsHash != null && check.levelsHash !== GENERATED_FROM_LEVELS_HASH;
+  const brokenOnThisLevel = check?.results?.filter(r => r.level === level && !r.stillWorks).length ?? 0;
 
   const pick = (n: number) => {
     setLevel(n); setRungs(0); setShowAnswers(false); setOpenAttack(null);
@@ -63,6 +137,64 @@ export default function HelpDesk() {
         Every player has a different password, so you cannot read one off your own screen. Every
         prompt here works whatever the word is.
       </p>
+
+      {/*
+        * Is this key still true?
+        *
+        * It is measured against one model at one moment and then frozen, so switching the backend
+        * or editing levels.yml silently invalidates it - and nothing said so. That matters more
+        * here than anywhere else in the dashboard, because this page is read aloud to a player who
+        * is already stuck.
+        */}
+      <div style={{ ...card, marginBottom: '20px',
+                    borderColor: check?.broken ? '#ef4444' : levelsChanged ? '#f59e0b' : '#2d3748' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontWeight: 700, color: '#e2e8f0' }}>Are these still the right answers?</div>
+            <div style={{ color: '#64748b', fontSize: '0.8rem', marginTop: '2px' }}>
+              {check
+                ? <>
+                    Checked {new Date(check.completedAt).toLocaleString()} against{' '}
+                    <strong style={{ color: '#94a3b8' }}>{check.backendLabel}</strong> —{' '}
+                    <strong style={{ color: check.broken ? '#ef4444' : '#22c55e' }}>
+                      {check.working} of {check.total} still land
+                    </strong>.
+                  </>
+                : <>Measured on {GENERATED_AT}. Never re-checked since — run it after changing the
+                   model or the levels.</>}
+            </div>
+          </div>
+          <button className="btn" onClick={runCheck} disabled={checking}>
+            {checking ? 'Checking…' : 'Re-check against the live model'}
+          </button>
+        </div>
+
+        {checkError && (
+          <div style={{ color: '#fca5a5', fontSize: '0.82rem', marginTop: '10px' }}>{checkError}</div>
+        )}
+        {checking && (
+          <div style={{ color: '#94a3b8', fontSize: '0.82rem', marginTop: '10px' }}>
+            Replaying every documented prompt against the level it belongs to. This spends real
+            model calls, so give it a moment.
+          </div>
+        )}
+        {levelsChanged && (
+          <div style={{ color: '#f59e0b', fontSize: '0.82rem', marginTop: '10px' }}>
+            ⚠ levels.yml has changed since this key was generated, so it may describe a game that no
+            longer exists. Regenerate with{' '}
+            <code style={{ color: '#ff8c00' }}>
+              CALIBRATE=true CALIBRATE_EMIT=&lt;repo root&gt; ./gradlew :backend:test --tests '*LevelCalibrationTest*'
+            </code>
+          </div>
+        )}
+        {check && check.broken > 0 && (
+          <div style={{ color: '#fca5a5', fontSize: '0.82rem', marginTop: '10px' }}>
+            {check.broken} documented solution{check.broken === 1 ? '' : 's'} no longer work.
+            They are marked below. Regenerating the key is what fixes this — until then, do not read
+            a crossed-out prompt to a player.
+          </div>
+        )}
+      </div>
 
       {/* Route map. Ask what stopped working before handing out a hint for what has not started. */}
       <div style={{ ...card, marginBottom: '20px' }}>
@@ -225,7 +357,11 @@ export default function HelpDesk() {
               Worked solutions — {guide.attacks.length} different ways
             </div>
             <div style={{ color: '#64748b', fontSize: '0.8rem', marginTop: '2px' }}>
-              Full spoilers. Every one of these actually beat this level.
+              Full spoilers. Every one of these beat this level when the key was measured
+              on {GENERATED_AT}.
+              {brokenOnThisLevel > 0 && (
+                <span style={{ color: '#ef4444' }}> {brokenOnThisLevel} no longer work.</span>
+              )}
             </div>
           </div>
           <button className="btn" onClick={() => setShowAnswers(s => !s)}>
@@ -238,7 +374,23 @@ export default function HelpDesk() {
             {guide.attacks.map((a, i) => (
               <div key={i} style={{ border: '1px solid #2d3748', borderRadius: '6px', padding: '12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
-                  <span className="badge" style={{ textTransform: 'capitalize' }}>{a.family}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span className="badge" style={{ textTransform: 'capitalize' }}>{a.family}</span>
+                    {(() => {
+                      const v = verdictFor(a.prompt);
+                      if (!v) return null;
+                      return v.stillWorks
+                        ? <span className="badge badge-success">✓ still works</span>
+                        : (
+                          <span className="badge badge-danger">
+                            ✗ {v.blockedBy === 'input' ? 'now refused by the input filter'
+                              : v.blockedBy === 'output' ? 'now caught by the output filter'
+                              : v.error ? 'could not be checked'
+                              : 'Leo no longer gives it away'}
+                          </span>
+                        );
+                    })()}
+                  </div>
                   <button className="btn" style={{ fontSize: '0.75rem', padding: '4px 10px' }}
                           onClick={() => copy(a.prompt)}>
                     {copied === a.prompt ? '✓ Copied' : 'Copy prompt'}
@@ -267,6 +419,21 @@ export default function HelpDesk() {
                     color: '#94a3b8', fontSize: '0.82rem', lineHeight: 1.5,
                   }}>
                     {a.reply}
+                    {/* The recorded reply is what the model said when the key was measured. When a
+                        check has since seen something different, show both - the new one is what a
+                        player will actually get. */}
+                    {(() => {
+                      const v = verdictFor(a.prompt);
+                      if (!v?.response || v.response === a.reply) return null;
+                      return (
+                        <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #2d3748' }}>
+                          <div style={{ color: '#64748b', fontSize: '0.75rem', marginBottom: '4px' }}>
+                            Most recent check — {check?.model}:
+                          </div>
+                          <div style={{ color: v.stillWorks ? '#94a3b8' : '#fca5a5' }}>{v.response}</div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>

@@ -72,15 +72,18 @@ final class SolutionsEmitter {
             throw new IllegalStateException("refusing to write the answer key: no measured solution for level(s) "
                     + String.join(", ", empty) + ". Fix the level, then re-run.");
         }
-        String stamp = "Generated %s from levels.yml sha256:%s"
-                .formatted(LocalDate.now(), shortHash(repoRoot.resolve("backend/src/main/resources/levels.yml")));
-        writeTypeScript(repoRoot.resolve("admin-dashboard/src/data/solutions.ts"), definitions, wins, stamp);
+        String generatedAt = LocalDate.now().toString();
+        String levelsHash = shortHash(repoRoot.resolve("backend/src/main/resources/levels.yml"));
+        String stamp = "Generated %s from levels.yml sha256:%s".formatted(generatedAt, levelsHash);
+        writeTypeScript(repoRoot.resolve("admin-dashboard/src/data/solutions.ts"), definitions, wins,
+                stamp, generatedAt, levelsHash);
         writeMarkdown(repoRoot.resolve("docs/SOLUTIONS.md"), definitions, wins, everyWin, stamp);
     }
 
     // -- admin dashboard -------------------------------------------------------------------------
 
-    private void writeTypeScript(Path target, List<LevelDefinition> definitions, List<Win> wins, String stamp)
+    private void writeTypeScript(Path target, List<LevelDefinition> definitions, List<Win> wins,
+                                 String stamp, String generatedAt, String levelsHash)
             throws Exception {
         StringBuilder sb = new StringBuilder();
         sb.append("// GENERATED - do not edit by hand.\n")
@@ -88,6 +91,10 @@ final class SolutionsEmitter {
                 .append("// Every prompt below actually beat that level against the live model, and the replies are\n")
                 .append("// real. Regenerate with CALIBRATE=true CALIBRATE_EMIT=<repo root> ./gradlew :backend:test\n")
                 .append("// --tests '*LevelCalibrationTest*'\n\n")
+                // The same provenance as the comment above, but readable by the dashboard: it uses
+                // these to say how old the key is and whether the levels have changed underneath it.
+                .append("export const GENERATED_AT = \"").append(generatedAt).append("\";\n")
+                .append("export const GENERATED_FROM_LEVELS_HASH = \"").append(levelsHash).append("\";\n\n")
                 .append("export interface Attack { family: string; prompt: string; reply: string; why: string; how: string; }\n")
                 .append("export interface LevelGuide {\n")
                 .append("  level: number; name: string; summary: string; defence: string;\n")
