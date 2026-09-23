@@ -38,7 +38,8 @@ public class SolutionVerifierService {
     public record SolutionRef(int level, String family, String prompt) {}
 
     public record SolutionResult(int level, String family, String prompt, boolean stillWorks,
-                                 String how, String response, String blockedBy, String error) {}
+                                 String how, String response, String blockedBy, String error,
+                                 long tokens, int llmCalls, int failedCalls) {}
 
     /**
      * @param levelsHash the current levels.yml fingerprint, so the dashboard can tell the difference
@@ -48,6 +49,8 @@ public class SolutionVerifierService {
                                   String backendId, String backendLabel, String model,
                                   String levelsHash,
                                   int total, int working, int broken,
+                                  /** What the check itself cost. A replay is one to three calls. */
+                                  long totalTokens, int llmCalls, int failedCalls,
                                   List<SolutionResult> results) {}
 
     /**
@@ -76,9 +79,15 @@ public class SolutionVerifierService {
         Instant startedAt = Instant.now();
         LlmBackendRouter.Backend backend = router.pin();
 
+        // Counted per pass rather than summed from the results at the end, because a retried
+        // solution's first attempt is replaced in the list below - and a retry is precisely the
+        // spend worth knowing about.
+        Spend spend = new Spend();
+
         // Only the failures are retried, rather than running every prompt twice: a second full pass
         // would double the cost of the common case to re-prove things that already passed.
         List<SolutionResult> results = replayAll(solutions);
+        spend.add(results);
         for (int attempt = 1; attempt < ATTEMPTS; attempt++) {
             List<SolutionRef> retry = results.stream()
                     .filter(r -> !r.stillWorks())
@@ -90,6 +99,7 @@ public class SolutionVerifierService {
             if (retry.isEmpty()) break;
             logger.info("Retrying {} solutions that did not land first time", retry.size());
             List<SolutionResult> second = replayAll(retry);
+            spend.add(second);
             for (SolutionResult better : second) {
                 if (!better.stillWorks()) continue;
                 results.replaceAll(existing ->
@@ -103,12 +113,28 @@ public class SolutionVerifierService {
         VerificationRun run = new VerificationRun(
                 UUID.randomUUID().toString(), startedAt, Instant.now(),
                 backend.id(), backend.label(), modelOf(backend), currentLevelsHash(),
-                results.size(), working, results.size() - working, results);
+                results.size(), working, results.size() - working,
+                spend.tokens, spend.calls, spend.failedCalls, results);
 
         persist(run, backend);
-        logger.info("Worked solutions checked against {}: {} of {} still land",
-                backend.label(), working, results.size());
+        logger.info("Worked solutions checked against {}: {} of {} still land, {} tokens over {} calls",
+                backend.label(), working, results.size(), spend.tokens, spend.calls);
         return run;
+    }
+
+    /** What the check itself cost, across every pass including the ones whose results were replaced. */
+    private static final class Spend {
+        private long tokens;
+        private int calls;
+        private int failedCalls;
+
+        void add(List<SolutionResult> pass) {
+            for (SolutionResult r : pass) {
+                tokens += r.tokens();
+                calls += r.llmCalls();
+                failedCalls += r.failedCalls();
+            }
+        }
     }
 
     /**
@@ -126,7 +152,10 @@ public class SolutionVerifierService {
                     var outcome = calibrationService.replaySolution(ref.level(), ref.prompt());
                     return new SolutionResult(ref.level(), ref.family(), ref.prompt(),
                             outcome.stillWorks(), outcome.how(), outcome.response(),
-                            outcome.blockedBy(), outcome.error());
+                            outcome.blockedBy(), outcome.error(),
+                            outcome.tokens() == null ? 0 : outcome.tokens().totalTokens(),
+                            outcome.tokens() == null ? 0 : outcome.tokens().llmCalls(),
+                            outcome.tokens() == null ? 0 : outcome.tokens().failedCalls());
                 }));
             }
             for (Future<SolutionResult> future : futures) {
@@ -153,7 +182,9 @@ public class SolutionVerifierService {
                 run.startedAt(), run.completedAt(), run.working(), run.total(), null,
                 new CalibrationRunRepository.RunTag(run.backendId(), run.backendLabel(), run.model(),
                         spec.maxTokens(), spec.maxConcurrent()),
-                0, run.total(), 0, run);
+                // Was 0 tokens and the solution count passed as the call count, so a check that
+                // spends real money reported having spent none.
+                run.totalTokens(), run.llmCalls(), run.failedCalls(), run);
     }
 
     private static String modelOf(LlmBackendRouter.Backend backend) {

@@ -21,6 +21,9 @@ interface VerificationRun {
   total: number;
   working: number;
   broken: number;
+  totalTokens?: number;
+  llmCalls?: number;
+  failedCalls?: number;
   results: SolutionResult[];
   neverRun?: boolean;
 }
@@ -172,6 +175,14 @@ export default function HelpDesk() {
                     <strong style={{ color: check.broken ? '#ef4444' : '#22c55e' }}>
                       {check.working} of {check.total} still land
                     </strong>.
+                    {/* What the check cost, so the next person can judge whether to re-run it.
+                        A replay is one to three calls, so this is never simply the row count. */}
+                    {!!check.llmCalls && <>
+                      {' '}Cost {check.totalTokens?.toLocaleString()} tokens over {check.llmCalls} calls
+                      {!!check.failedCalls && <span style={{ color: '#f59e0b' }}>
+                        {' '}({check.failedCalls} call{check.failedCalls === 1 ? '' : 's'} failed)
+                      </span>}.
+                    </>}
                   </>
                 : <>Measured on {GENERATED_AT}. Never re-checked since — run it after changing the
                    model or the levels.</>}

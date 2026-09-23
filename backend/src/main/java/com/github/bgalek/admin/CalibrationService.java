@@ -333,7 +333,12 @@ public class CalibrationService {
      * @param blockedBy "input" or "output" when a guardrail stopped it, null otherwise
      */
     public record SolutionOutcome(boolean stillWorks, String how, String response,
-                                  String blockedBy, String error) {}
+                                  String blockedBy, String error, TokenUsage tokens) {
+        static SolutionOutcome of(boolean stillWorks, String how, String response, String blockedBy,
+                                  String error, TokenCountingProvider counter) {
+            return new SolutionOutcome(stillWorks, how, response, blockedBy, error, counter.usage());
+        }
+    }
 
     /**
      * Replays one of the Help Desk's worked solutions against the model that is answering now.
@@ -346,25 +351,30 @@ public class CalibrationService {
     public SolutionOutcome replaySolution(int level, String prompt) {
         LevelDefinition definition = levelDefinitionService.definition(level);
         if (definition == null) {
-            return new SolutionOutcome(false, null, null, null, "Level " + level + " no longer exists");
+            return new SolutionOutcome(false, null, null, null, "Level " + level + " no longer exists",
+                    TokenUsage.empty());
         }
         LlmBackendRouter.Backend backend = router.pin();
-        ConfigurableLevel configurable = new ConfigurableLevel(definition, backend);
+        // Counted through a wrapper rather than by counting the one reply this method reads: a
+        // single replay can cost three calls - Leo, the level's judge at 3, 4 and 7, and the
+        // recovery check - and only the wrapper sees all of them.
+        TokenCountingProvider counter = new TokenCountingProvider(backend);
+        ConfigurableLevel configurable = new ConfigurableLevel(definition, counter);
         if (configurable.inputFilter(prompt)) {
             // The level now refuses the question outright, which is a perfectly good reason for a
             // worked solution to have stopped working.
-            return new SolutionOutcome(false, null, null, "input", null);
+            return SolutionOutcome.of(false, null, null, "input", null, counter);
         }
         try {
-            String response = backend.chat(configurable.prompt(prompt, SECRET)).content();
+            String response = counter.chat(configurable.prompt(prompt, SECRET)).content();
             if (configurable.outputFilter(response, SECRET)) {
-                return new SolutionOutcome(false, null, response, "output", null);
+                return SolutionOutcome.of(false, null, response, "output", null, counter);
             }
-            boolean works = humanCouldRecover(backend, response);
-            return new SolutionOutcome(works, works ? howItArrived(response) : null, response, null, null);
+            boolean works = humanCouldRecover(counter, response);
+            return SolutionOutcome.of(works, works ? howItArrived(response) : null, response, null, null, counter);
         } catch (Exception e) {
-            return new SolutionOutcome(false, null, null, null,
-                    e.getClass().getSimpleName() + (e.getMessage() == null ? "" : ": " + e.getMessage()));
+            return SolutionOutcome.of(false, null, null, null,
+                    e.getClass().getSimpleName() + (e.getMessage() == null ? "" : ": " + e.getMessage()), counter);
         }
     }
 
@@ -845,6 +855,21 @@ public class CalibrationService {
                                                       List<Win> everyWin, TokenCountingProvider runCounter) {
         List<InvariantResult> results = new ArrayList<>();
 
+        // Which of these a partial run is entitled to an opinion on.
+        //
+        // Three of the seven compare levels against each other, and on a subset they cannot fail:
+        // setShrinks needs two consecutive rungs to compare, noSkeletonKeys needs a prompt to be
+        // able to span rungs, and everyFamilyCloses is measured against the top of the ladder. Run
+        // one level on its own and all three report green, so a single level scored 6/7 and 7/7
+        // while the full ladder scored 2/7 - the narrowest run looked like the healthiest one.
+        Set<Integer> measured = scores.stream().map(LevelScore::level).collect(Collectors.toSet());
+        boolean hasConsecutivePair = measured.stream().anyMatch(l -> measured.contains(l + 1));
+        int ladderTop = definitions.stream().mapToInt(LevelDefinition::order).max().orElse(0);
+        boolean sawLadderTop = measured.contains(ladderTop);
+        String onlyPart = "Not measured - this run covered levels "
+                + measured.stream().sorted().map(String::valueOf).collect(Collectors.joining(", "))
+                + ", and this invariant compares levels against each other.";
+
         // A run where no level reached the model proves nothing. Reporting "7/7 invariants" off
         // the back of a switched-off box is worse than reporting nothing, because it gets believed.
         boolean anythingMeasured = scores.stream().anyMatch(sc -> sc.tokens() != null && sc.tokens().llmCalls() > 0);
@@ -921,7 +946,9 @@ public class CalibrationService {
             cur.invariants().put("setShrinks", passedForLevel);
         }
         if (scores.size() > 0) scores.get(0).invariants().put("setShrinks", true);
-        results.add(InvariantResult.measured("setShrinks", setShrinksPassed, setShrinksDetail.toString()));
+        results.add(hasConsecutivePair
+                ? InvariantResult.measured("setShrinks", setShrinksPassed, setShrinksDetail.toString())
+                : InvariantResult.notMeasured("setShrinks", onlyPart));
         
         // 4. floorHolds
         boolean floorHoldsPassed = true;
@@ -964,7 +991,11 @@ public class CalibrationService {
                 noSkeletonKeysDetail.append(String.format("Prompt beat %d levels. ", entry.getValue().size()));
             }
         }
-        results.add(InvariantResult.measured("noSkeletonKeys", noSkeletonKeysPassed, noSkeletonKeysDetail.toString()));
+        // Needs the whole ladder, not merely two rungs: a prompt's real span can include levels
+        // this run never tried, so a subset can only ever under-report.
+        results.add(measured.size() == definitions.size()
+                ? InvariantResult.measured("noSkeletonKeys", noSkeletonKeysPassed, noSkeletonKeysDetail.toString())
+                : InvariantResult.notMeasured("noSkeletonKeys", onlyPart));
         
         // 7. everyFamilyCloses
         boolean everyFamilyClosesPassed = true;
@@ -981,7 +1012,11 @@ public class CalibrationService {
             everyFamilyClosesPassed = false;
             everyFamilyClosesDetail.append(String.format("Family %s beat top level %d. ", entry.getKey(), top));
         }
-        results.add(InvariantResult.measured("everyFamilyCloses", everyFamilyClosesPassed, everyFamilyClosesDetail.toString()));
+        // "top" above is the highest level in THIS run, which on a partial run is not the top of
+        // the ladder - so without the real top level the question being answered is the wrong one.
+        results.add(sawLadderTop
+                ? InvariantResult.measured("everyFamilyCloses", everyFamilyClosesPassed, everyFamilyClosesDetail.toString())
+                : InvariantResult.notMeasured("everyFamilyCloses", onlyPart));
         
         return results;
     }
