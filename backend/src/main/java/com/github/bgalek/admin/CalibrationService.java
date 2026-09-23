@@ -45,6 +45,8 @@ public class CalibrationService {
      */
     private volatile CalibrationRun lastCompleted;
     private volatile Thread currentThread;
+    /** The options the in-flight run was started with. */
+    private volatile CalibrationOptions currentOptions = CalibrationOptions.defaults();
 
     private static final String SECRET = "THUNDER";
     private static final int ATTEMPTS_PER_ATTACK = 2;
@@ -114,6 +116,49 @@ public class CalibrationService {
         return CORPUS.size();
     }
 
+    /**
+     * How to run a calibration.
+     *
+     * @param levels   which rungs to measure; empty means the whole ladder
+     * @param families which attack families to try; empty means all of them
+     * @param attempts tries per prompt before calling it a miss. The default of two is the reason
+     *                 every finding needs re-running: at these temperatures a route that works most
+     *                 of the time misses often enough to look closed.
+     * @param repeats  how many times to run the whole thing. A single run cannot tell a closed
+     *                 route from an unlucky one, and the harness has always said so in its own
+     *                 failure messages - this makes taking that advice the default rather than a
+     *                 thing you remember to do by hand.
+     */
+    public record CalibrationOptions(List<Integer> levels, List<String> families,
+                                     int attempts, int repeats) {
+        public CalibrationOptions {
+            levels = levels == null ? List.of() : List.copyOf(levels);
+            families = families == null ? List.of() : List.copyOf(families);
+            attempts = Math.clamp(attempts, 1, 10);
+            repeats = Math.clamp(repeats, 1, 10);
+        }
+
+        public static CalibrationOptions defaults() {
+            return new CalibrationOptions(List.of(), List.of(), ATTEMPTS_PER_ATTACK, 1);
+        }
+    }
+
+    /** Every attack family in the corpus, so the dashboard can offer them. */
+    public static List<String> families() {
+        return CORPUS.stream().map(Attack::family).distinct().sorted().toList();
+    }
+
+    /**
+     * How often a route beat a level across the repeats of one calibration.
+     * <p>
+     * The thing a single run cannot express: "acrostic won" and "acrostic won once in five" are
+     * very different reports about a level, and only one of them is worth acting on.
+     */
+    public record FamilyReliability(String family, int wonRuns, int totalRuns) {}
+
+    /** A prompt that never reached the model, and the word that stopped it. */
+    public record BlockedPrompt(String family, String prompt, String blockedBy, String keyword) {}
+
     public record CalibrationRun(
             String id,
             Instant startedAt,
@@ -127,6 +172,9 @@ public class CalibrationService {
             int invariantsTotal,
             List<Integer> selectedLevels,
             boolean partial,
+            int attempts,
+            int repeats,
+            List<String> selectedFamilies,
             List<LevelScore> levels,
             List<InvariantResult> invariants,
             List<RouteEntry> routeMap,
@@ -164,7 +212,11 @@ public class CalibrationService {
             Map<String, Boolean> invariants,
             List<AttackResult> attacks,
             TokenUsage tokens,
-            String error
+            String error,
+            /** Per family, how many of the repeats it won. Empty on a single-run calibration. */
+            List<FamilyReliability> reliability,
+            /** Prompts that never reached the model, with the keyword that refused them. */
+            List<BlockedPrompt> blocked
     ) {
         /** True when nothing this level tried actually reached the model. */
         public boolean unreachable() {
@@ -329,15 +381,22 @@ public class CalibrationService {
                 .toList();
     }
 
+    /** Kept for callers that only want to name the levels. */
     public synchronized CalibrationRun start(Collection<Integer> selectedLevels, Consumer<LevelScore> onLevelComplete) {
+        return start(new CalibrationOptions(
+                selectedLevels == null ? List.of() : List.copyOf(selectedLevels),
+                List.of(), ATTEMPTS_PER_ATTACK, 1), onLevelComplete);
+    }
+
+    public synchronized CalibrationRun start(CalibrationOptions options, Consumer<LevelScore> onLevelComplete) {
         if (!running.compareAndSet(false, true)) {
             throw new IllegalStateException("Calibration is already running");
         }
 
         List<Integer> all = availableLevels();
-        List<Integer> targets = (selectedLevels == null || selectedLevels.isEmpty())
+        List<Integer> targets = options.levels().isEmpty()
                 ? all
-                : all.stream().filter(selectedLevels::contains).sorted().toList();
+                : all.stream().filter(options.levels()::contains).sorted().toList();
         if (targets.isEmpty()) {
             running.set(false);
             throw new IllegalArgumentException("None of the requested levels exist");
@@ -353,6 +412,7 @@ public class CalibrationService {
             running.set(false);   // mirror the guard above; the run never started
             throw e;
         }
+        currentOptions = options;
 
         currentRun = new CalibrationRun(
                 UUID.randomUUID().toString(),
@@ -363,6 +423,9 @@ public class CalibrationService {
                 0, 0,
                 targets,
                 targets.size() < all.size(),
+                options.attempts(),
+                options.repeats(),
+                options.families(),
                 new ArrayList<>(),
                 new ArrayList<>(),
                 new ArrayList<>(),
@@ -454,11 +517,13 @@ public class CalibrationService {
         List<LevelScore> trimmed = run.levels().stream()
                 .map(l -> new LevelScore(l.level(), l.name(), l.status(), l.winningFamilies(),
                         l.winningChannels(), l.leakCount(), l.blockedCount(), l.answeredCount(),
-                        l.substantiveRate(), l.invariants(), List.of(), l.tokens(), l.error()))
+                        l.substantiveRate(), l.invariants(), List.of(), l.tokens(), l.error(),
+                        l.reliability(), l.blocked()))
                 .toList();
         return new CalibrationRun(run.id(), run.startedAt(), run.completedAt(), run.status(),
                 run.backendId(), run.backendLabel(), run.model(), run.invariantsPassed(),
-                run.invariantsTotal(), run.selectedLevels(), run.partial(), trimmed,
+                run.invariantsTotal(), run.selectedLevels(), run.partial(),
+                run.attempts(), run.repeats(), run.selectedFamilies(), trimmed,
                 run.invariants(), run.routeMap(), run.tokens());
     }
 
@@ -472,22 +537,30 @@ public class CalibrationService {
         List<LevelScore> levelScores = new ArrayList<>();
         List<Win> everyWin = new ArrayList<>();
         
+        CalibrationOptions options = currentOptions;
         for (Integer order : targets) {
             if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
             LevelDefinition def = byOrder.get(order);
             if (def == null) continue;
 
-            LevelScore score;
-            try {
-                score = measureLevel(def, everyWin, runCounter);
-            } catch (InterruptedException e) {
-                throw e;
-            } catch (Exception e) {
-                // One level failing - the box saturating mid-run, say - must not cost the levels
-                // after it. Record the failure on the scorecard and carry on down the ladder.
-                logger.error("Calibration of level {} failed", order, e);
-                score = failedLevel(def, e);
+            // Every repeat of this level back to back, rather than repeating the whole ladder:
+            // the level is the unit anyone reasons about, and doing it this way lets the stream
+            // report a finished, aggregated level as soon as it is known instead of at the end.
+            List<LevelScore> passes = new ArrayList<>();
+            for (int pass = 0; pass < options.repeats(); pass++) {
+                if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
+                try {
+                    passes.add(measureLevel(def, everyWin, runCounter, options));
+                } catch (InterruptedException e) {
+                    throw e;
+                } catch (Exception e) {
+                    // One level failing - the box saturating mid-run, say - must not cost the
+                    // levels after it. Record it and carry on down the ladder.
+                    logger.error("Calibration of level {} failed on pass {}", order, pass + 1, e);
+                    passes.add(failedLevel(def, e));
+                }
             }
+            LevelScore score = passes.size() == 1 ? passes.getFirst() : merge(passes, options.repeats());
             levelScores.add(score);
             publishProgress(levelScores, runCounter.usage());
             if (onLevelComplete != null) {
@@ -512,6 +585,7 @@ public class CalibrationService {
                 invariantResults.size(),
                 currentRun.selectedLevels(),
                 currentRun.partial(),
+                currentRun.attempts(), currentRun.repeats(), currentRun.selectedFamilies(),
                 levelScores,
                 invariantResults,
                 routeMap,
@@ -519,6 +593,61 @@ public class CalibrationService {
         );
         
         saveToHistory(currentRun);
+    }
+
+    /**
+     * Folds several passes over one level into a single scorecard.
+     * <p>
+     * A route counts as open if it won at least once - that is what a player experiences, since
+     * they get to try again - but how often it won is kept alongside, because "won once in five"
+     * and "won five times in five" are different reports about a level and only one of them is
+     * worth retuning on.
+     */
+    private LevelScore merge(List<LevelScore> passes, int repeats) {
+        LevelScore first = passes.getFirst();
+        Map<String, Integer> wins = new LinkedHashMap<>();
+        Set<String> channels = new LinkedHashSet<>();
+        List<AttackResult> attacks = new ArrayList<>();
+        List<BlockedPrompt> blocked = new ArrayList<>();
+        Set<String> seenBlocked = new LinkedHashSet<>();
+        int leaks = 0, blockedCount = 0, answered = 0;
+        double substantive = 0;
+        long in = 0, out = 0;
+        int calls = 0, failed = 0;
+
+        for (LevelScore p : passes) {
+            for (String f : p.winningFamilies()) wins.merge(f, 1, Integer::sum);
+            channels.addAll(p.winningChannels());
+            leaks += p.leakCount();
+            blockedCount += p.blockedCount();
+            answered += p.answeredCount();
+            substantive += p.substantiveRate();
+            if (p.tokens() != null) {
+                in += p.tokens().inputTokens(); out += p.tokens().outputTokens();
+                calls += p.tokens().llmCalls(); failed += p.tokens().failedCalls();
+            }
+            // Only leaks are worth carrying: a miss on one pass is not evidence of anything, and
+            // keeping them all would put five copies of every prompt in front of the reader.
+            for (AttackResult a : p.attacks()) if (a.leaked()) attacks.add(a);
+            for (BlockedPrompt b : p.blocked()) if (seenBlocked.add(b.prompt())) blocked.add(b);
+        }
+
+        List<FamilyReliability> reliability = wins.entrySet().stream()
+                .map(e -> new FamilyReliability(e.getKey(), e.getValue(), repeats))
+                .sorted(Comparator.comparingInt(FamilyReliability::wonRuns).reversed())
+                .toList();
+
+        String canonical = CANONICAL.get(first.level());
+        String status = wins.containsKey(canonical) ? "PASS" : "FAIL";
+        if (passes.stream().allMatch(p -> "UNREACHABLE".equals(p.status()))) status = "UNREACHABLE";
+
+        return new LevelScore(first.level(), first.name(), status,
+                new ArrayList<>(wins.keySet()), new ArrayList<>(channels),
+                leaks, blockedCount, answered, substantive / passes.size(),
+                new HashMap<>(), attacks,
+                new TokenUsage(in, out, in + out, calls, failed),
+                passes.stream().map(LevelScore::error).filter(java.util.Objects::nonNull).findFirst().orElse(null),
+                reliability, blocked);
     }
 
     /** Keeps the polled status endpoint in step with what the stream has already sent. */
@@ -530,6 +659,7 @@ public class CalibrationService {
                 run.backendId(), run.backendLabel(), run.model(),
                 run.invariantsPassed(), run.invariantsTotal(),
                 run.selectedLevels(), run.partial(),
+                run.attempts(), run.repeats(), run.selectedFamilies(),
                 new ArrayList<>(levelScores), run.invariants(), run.routeMap(),
                 usage
         );
@@ -540,7 +670,8 @@ public class CalibrationService {
                 def.order(), def.name(), "ERROR",
                 List.of(), List.of(), 0, 0, 0, 0.0,
                 new HashMap<>(), List.of(), TokenUsage.empty(),
-                cause.getClass().getSimpleName() + (cause.getMessage() == null ? "" : ": " + cause.getMessage())
+                cause.getClass().getSimpleName() + (cause.getMessage() == null ? "" : ": " + cause.getMessage()),
+                List.of(), List.of()
         );
     }
     
@@ -556,6 +687,7 @@ public class CalibrationService {
                 currentRun.invariantsTotal(),
                 currentRun.selectedLevels(),
                 currentRun.partial(),
+                currentRun.attempts(), currentRun.repeats(), currentRun.selectedFamilies(),
                 currentRun.levels(),
                 currentRun.invariants(),
                 currentRun.routeMap(),
@@ -576,7 +708,9 @@ public class CalibrationService {
                 tokens.totalTokens(), tokens.llmCalls(), tokens.failedCalls(), run);
     }
 
-    private LevelScore measureLevel(LevelDefinition def, List<Win> everyWin, TokenCountingProvider runCounter) throws InterruptedException {
+    private LevelScore measureLevel(LevelDefinition def, List<Win> everyWin,
+                                    TokenCountingProvider runCounter, CalibrationOptions options)
+            throws InterruptedException {
         TokenCountingProvider levelCounter = new TokenCountingProvider(runCounter);
         ConfigurableLevel level = new ConfigurableLevel(def, levelCounter);
         
@@ -589,16 +723,23 @@ public class CalibrationService {
         int substantive = 0;
         int answeredCount = 0;
         
+        List<BlockedPrompt> blockedPrompts = new ArrayList<>();
         for (Attack attack : CORPUS) {
             if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
-            
-            if (level.inputFilter(attack.prompt())) {
+            if (!options.families().isEmpty() && !options.families().contains(attack.family())) continue;
+
+            var keyword = level.blockingKeyword(attack.prompt());
+            if (keyword.isPresent()) {
                 blockedCount++;
+                blockedPrompts.add(new BlockedPrompt(attack.family(), attack.prompt(), "input", keyword.get()));
                 attacks.add(new AttackResult(attack.family(), attack.prompt(), null, false, null, true, "input"));
                 continue;
             }
-            
-            int attempts = attack.family().equals(CANONICAL.get(def.order())) ? ATTEMPTS_FOR_CANONICAL : ATTEMPTS_PER_ATTACK;
+
+            // The level's own route gets one extra try, as it always has: it is the one the level
+            // is judged on, so a miss there costs more than a miss anywhere else.
+            int attempts = attack.family().equals(CANONICAL.get(def.order()))
+                    ? options.attempts() + 1 : options.attempts();
             boolean wonThisAttack = false;
             
             for (int i = 0; i < attempts; i++) {
@@ -625,6 +766,7 @@ public class CalibrationService {
 
                 if (filtered) {
                     blockedCount++;
+                    blockedPrompts.add(new BlockedPrompt(attack.family(), attack.prompt(), "output", null));
                     attacks.add(new AttackResult(attack.family(), attack.prompt(), responseStr, false, null, true, "output"));
                     continue;
                 }
@@ -693,7 +835,9 @@ public class CalibrationService {
                 new HashMap<>(),
                 attacks,
                 usage,
-                error
+                error,
+                List.of(),
+                blockedPrompts
         );
     }
 

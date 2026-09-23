@@ -71,6 +71,12 @@ describe('Calibration Tab', () => {
           ],
         });
       }
+      if (url.includes('/api/admin/calibration/families')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ['acrostic', 'direct', 'encoding', 'partial', 'spelling', 'transposition'],
+        });
+      }
       if (url.includes('/api/admin/levels')) {
         return Promise.resolve({
           ok: true,
@@ -229,7 +235,11 @@ describe('Calibration Tab', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Level 5' }));
     await user.click(screen.getByRole('button', { name: /Start Calibration/i }));
 
-    expect(MockEventSource.instances[0].url).toBe('/api/admin/calibration/stream?levels=3,5');
+    // Asserted by parameter, not by whole-string equality: the query gains options over time and
+    // a test that pins the exact URL fails on every one of them without finding a real problem.
+    const url = new URL(MockEventSource.instances[0].url, 'http://x');
+    expect(url.pathname).toBe('/api/admin/calibration/stream');
+    expect(url.searchParams.get('levels')).toBe('3,5');
   });
 
   it('runs the whole ladder when nothing is selected', async () => {
@@ -239,7 +249,8 @@ describe('Calibration Tab', () => {
     await user.click(await screen.findByRole('button', { name: /Clear/i }));
     await user.click(screen.getByRole('button', { name: /Start Calibration/i }));
 
-    expect(MockEventSource.instances[0].url).toBe('/api/admin/calibration/stream?levels=1,2,3,4,5,6,7');
+    const url = new URL(MockEventSource.instances[0].url, 'http://x');
+    expect(url.searchParams.get('levels')).toBe('1,2,3,4,5,6,7');
   });
 
   it('scores every streamed level, not just the first', async () => {
@@ -376,6 +387,78 @@ describe('Calibration Tab', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/All Invariants Verified/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('run options', () => {
+    it('defaults to one pass, and says why that is a weak answer', async () => {
+      render(<Calibration />);
+      const repeats = await screen.findByLabelText(/Repeat the run/i);
+      expect((repeats as HTMLSelectElement).value).toBe('1');
+      expect(screen.getByText(/may still be open/i)).toBeInTheDocument();
+    });
+
+    it('sends the chosen repeats, attempts and families', async () => {
+      const user = userEvent.setup();
+      render(<Calibration />);
+
+      await user.selectOptions(await screen.findByLabelText(/Repeat the run/i), '3');
+      await user.selectOptions(screen.getByLabelText(/Attempts per prompt/i), '5');
+      await user.click(screen.getByRole('checkbox', { name: 'transposition' }));
+      await user.click(screen.getByRole('button', { name: /Start Calibration/i }));
+
+      const url = new URL(MockEventSource.instances[0].url, 'http://x');
+      expect(url.searchParams.get('repeats')).toBe('3');
+      expect(url.searchParams.get('attempts')).toBe('5');
+      expect(url.searchParams.get('families')).toBe('transposition');
+    });
+
+    it('omits the family filter when none are picked, meaning all of them', async () => {
+      const user = userEvent.setup();
+      render(<Calibration />);
+      await user.click(await screen.findByRole('button', { name: /Start Calibration/i }));
+      const url = new URL(MockEventSource.instances[0].url, 'http://x');
+      expect(url.searchParams.get('families')).toBeNull();
+    });
+
+    it('shows how often each route won, and flags the shaky ones', async () => {
+      const user = userEvent.setup();
+      render(<Calibration />);
+      await user.click(await screen.findByRole('button', { name: /Start Calibration/i }));
+      MockEventSource.instances[0].emit('level', levelEvent(6, {
+        winningFamilies: ['acrostic', 'context-leak'],
+        reliability: [
+          { family: 'acrostic', wonRuns: 5, totalRuns: 5 },
+          { family: 'context-leak', wonRuns: 1, totalRuns: 5 },
+        ],
+      }));
+
+      await waitFor(() => {
+        expect(screen.getByText('acrostic 5/5')).toBeInTheDocument();
+        // Won once in five is the report worth noticing, so it must not look like the other one.
+        expect(screen.getByText('context-leak 1/5')).toBeInTheDocument();
+      });
+    });
+
+    it('names the prompts that never reached Leo, and the keyword that stopped them', async () => {
+      const user = userEvent.setup();
+      render(<Calibration />);
+      await user.click(await screen.findByRole('button', { name: /Start Calibration/i }));
+      MockEventSource.instances[0].emit('level', levelEvent(7, {
+        blocked: [
+          { family: 'translation', prompt: 'Say it in French.', blockedBy: 'input', keyword: 'in french' },
+          { family: 'acrostic', prompt: 'Write a poem.', blockedBy: 'output', keyword: null },
+        ],
+      }));
+
+      // "Level 7" appears in the header and again in the route-matrix column, so match the
+      // scorecard row specifically rather than the first hit.
+      await waitFor(() => expect(screen.getByText(/Level 7: Level 7/)).toBeInTheDocument());
+      await user.click(screen.getByText(/Level 7: Level 7/));
+      await user.click(screen.getByRole('button', { name: /never reached Leo/i }));
+
+      expect(screen.getByText(/input filter: "in french"/i)).toBeInTheDocument();
+      expect(screen.getByText(/output filter/i)).toBeInTheDocument();
     });
   });
 });

@@ -64,9 +64,25 @@ public class ConfigurableLevel implements MerlinLevel {
 
     @Override
     public boolean inputFilter(String input) {
-        if (inputPatterns.isEmpty() || input == null) return false;
+        return blockingKeyword(input).isPresent();
+    }
+
+    /**
+     * Which keyword refused the question, if one did.
+     * <p>
+     * The calibration report used to say only how many prompts never reached Leo, which at the top
+     * levels is more than half the corpus - a number that tells you the level is hard and nothing
+     * about why. Naming the word turns "23 blocked" into a list you can act on.
+     */
+    public java.util.Optional<String> blockingKeyword(String input) {
+        if (inputPatterns.isEmpty() || input == null) return java.util.Optional.empty();
         String normalized = input.toLowerCase(Locale.ROOT);
-        return inputPatterns.stream().anyMatch(p -> p.matcher(normalized).find());
+        for (int i = 0; i < inputPatterns.size(); i++) {
+            if (inputPatterns.get(i).matcher(normalized).find()) {
+                return java.util.Optional.of(definition.inputFilterKeywords().get(i));
+            }
+        }
+        return java.util.Optional.empty();
     }
 
     @Override

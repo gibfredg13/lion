@@ -18,6 +18,9 @@ interface TokenUsage {
   failedCalls?: number;
 }
 
+interface FamilyReliability { family: string; wonRuns: number; totalRuns: number; }
+interface BlockedPrompt { family: string; prompt: string; blockedBy: string; keyword: string | null; }
+
 interface LevelScore {
   level: number;
   name: string;
@@ -32,6 +35,8 @@ interface LevelScore {
   attacks: AttackResult[];
   tokens?: TokenUsage;
   error?: string | null;
+  reliability?: FamilyReliability[];
+  blocked?: BlockedPrompt[];
 }
 
 interface InvariantResult {
@@ -57,6 +62,9 @@ interface CalibrationRun {
   invariantsTotal: number;
   selectedLevels?: number[];
   partial?: boolean;
+  attempts?: number;
+  repeats?: number;
+  selectedFamilies?: string[];
   backendId?: string;
   backendLabel?: string;
   model?: string | null;
@@ -167,6 +175,11 @@ export default function Calibration() {
   const [expandedLevels, setExpandedLevels] = useState<Record<number, boolean>>({});
   const [availableLevels, setAvailableLevels] = useState<LevelDefinitionSummary[]>([]);
   const [selectedLevels, setSelectedLevels] = useState<number[]>([]);
+  const [families, setFamilies] = useState<string[]>([]);
+  const [selectedFamilies, setSelectedFamilies] = useState<string[]>([]);
+  const [attempts, setAttempts] = useState(2);
+  const [repeats, setRepeats] = useState(1);
+  const [showBlocked, setShowBlocked] = useState<Record<number, boolean>>({});
   // Two views of the same bill: what the finished levels cost, and what the run counter says it
   // has spent so far. The run counter also covers the invariant probes and the level in flight, so
   // it is never the smaller of the two - take whichever is ahead and the total only ever climbs.
@@ -188,6 +201,7 @@ export default function Calibration() {
 
   useEffect(() => {
     fetchLevels();
+    fetchFamilies();
     fetchActiveBackend();
     fetchCalibrationHistory();
     fetchStressHistory();
@@ -208,6 +222,19 @@ export default function Calibration() {
         .sort((a: LevelDefinitionSummary, b: LevelDefinitionSummary) => a.order - b.order);
       setAvailableLevels(summaries);
       setSelectedLevels(summaries.map((d) => d.order));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchFamilies = async () => {
+    try {
+      const res = await fetch('/api/admin/calibration/families', { credentials: 'include' });
+      if (!res.ok) return;
+      const body = await res.json();
+      // Guarded like fetchLevels: this list is mapped over during render, so anything that is not
+      // an array takes the whole tab down rather than degrading to an empty picker.
+      if (Array.isArray(body)) setFamilies(body);
     } catch (e) {
       console.error(e);
     }
@@ -265,7 +292,12 @@ export default function Calibration() {
     setRunTokens(EMPTY_TOKENS);
     setCalibError(null);
     // EventSource cannot POST, so the chosen levels ride on the query string.
-    const query = levelsToRun.length > 0 ? `?levels=${levelsToRun.join(',')}` : '';
+    const params = new URLSearchParams();
+    if (levelsToRun.length > 0) params.set('levels', levelsToRun.join(','));
+    if (selectedFamilies.length > 0) params.set('families', selectedFamilies.join(','));
+    params.set('attempts', String(attempts));
+    params.set('repeats', String(repeats));
+    const query = `?${params.toString()}`;
     const source = new EventSource(`/api/admin/calibration/stream${query}`, { withCredentials: true });
     source.addEventListener('level', (e) => {
       const score: LevelScore = JSON.parse(e.data);
@@ -475,6 +507,70 @@ export default function Calibration() {
               );
             })}
           </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '16px', marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #2d3748' }}>
+            <div>
+              <label htmlFor="cal-repeats" style={{ color: '#e2e8f0', fontSize: '0.85rem', fontWeight: 600 }}>
+                Repeat the run
+              </label>
+              <select
+                id="cal-repeats" value={repeats} disabled={calibRunning}
+                onChange={(e) => setRepeats(Number(e.target.value))}
+                style={{ width: '100%', marginTop: '6px', padding: '8px', background: '#0d0d1a', color: '#e2e8f0', border: '1px solid #2d3748', borderRadius: '6px' }}
+              >
+                {[1, 2, 3, 5].map((n) => (
+                  <option key={n} value={n}>{n === 1 ? 'once' : `${n} times, aggregated`}</option>
+                ))}
+              </select>
+              {/* The lesson of every run so far: one pass cannot tell a closed route from an
+                  unlucky one, and the harness says so in its own failure messages. */}
+              <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '4px' }}>
+                {repeats === 1
+                  ? 'One pass. A route that misses here may still be open — it just did not fire.'
+                  : `Each route reported as "won N of ${repeats}" instead of yes or no.`}
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="cal-attempts" style={{ color: '#e2e8f0', fontSize: '0.85rem', fontWeight: 600 }}>
+                Attempts per prompt
+              </label>
+              <select
+                id="cal-attempts" value={attempts} disabled={calibRunning}
+                onChange={(e) => setAttempts(Number(e.target.value))}
+                style={{ width: '100%', marginTop: '6px', padding: '8px', background: '#0d0d1a', color: '#e2e8f0', border: '1px solid #2d3748', borderRadius: '6px' }}
+              >
+                {[1, 2, 3, 5].map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+              <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '4px' }}>
+                A level's own route always gets one more than this.
+              </div>
+            </div>
+
+            <div>
+              <div style={{ color: '#e2e8f0', fontSize: '0.85rem', fontWeight: 600 }}>Attack families</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '6px' }}>
+                {(families ?? []).map((f) => {
+                  const on = selectedFamilies.includes(f);
+                  return (
+                    <label key={f} style={{
+                      fontSize: '0.75rem', padding: '3px 7px', borderRadius: '10px', cursor: calibRunning ? 'not-allowed' : 'pointer',
+                      background: on ? '#ff660022' : '#0d0d1a', border: `1px solid ${on ? '#ff8c00' : '#2d3748'}`,
+                      color: on ? '#ff8c00' : '#94a3b8',
+                    }}>
+                      <input type="checkbox" checked={on} disabled={calibRunning} aria-label={f}
+                        style={{ width: 10, height: 10, marginRight: 4 }}
+                        onChange={() => setSelectedFamilies((p) => p.includes(f) ? p.filter(x => x !== f) : [...p, f])} />
+                      {f}
+                    </label>
+                  );
+                })}
+              </div>
+              <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '4px' }}>
+                {selectedFamilies.length === 0 ? 'All families.' : `${selectedFamilies.length} of ${families.length}.`}
+              </div>
+            </div>
+          </div>
+
           <div style={{ color: '#64748b', fontSize: '0.8rem', marginTop: '12px' }}>
             {selectedLevels.length === 0
               ? 'Nothing selected - the whole ladder will run.'
@@ -572,9 +668,17 @@ export default function Calibration() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', maxWidth: '380px', justifyContent: 'flex-end', gap: '4px' }}>
-                      {lvl.winningFamilies.map(f => (
-                        <span key={f} style={badgeStyle('#ff8c00')}>{f}</span>
-                      ))}
+                      {lvl.winningFamilies.map(f => {
+                        // "acrostic 1/5" and "acrostic 5/5" are very different reports about a
+                        // level, and only one of them is worth retuning on.
+                        const r = lvl.reliability?.find(x => x.family === f);
+                        const shaky = r != null && r.totalRuns > 1 && r.wonRuns * 2 <= r.totalRuns;
+                        return (
+                          <span key={f} style={badgeStyle(shaky ? '#f59e0b' : '#ff8c00')}>
+                            {f}{r && r.totalRuns > 1 ? ` ${r.wonRuns}/${r.totalRuns}` : ''}
+                          </span>
+                        );
+                      })}
                     </div>
                     <span style={{ color: '#94a3b8' }}>{expandedLevels[lvl.level] ? '▲' : '▼'}</span>
                   </div>
@@ -582,6 +686,30 @@ export default function Calibration() {
 
                 {expandedLevels[lvl.level] && (
                   <div style={{ marginTop: '16px', borderTop: '1px solid #2d3748', paddingTop: '16px' }}>
+                    {lvl.blocked && lvl.blocked.length > 0 && (
+                      <div style={{ marginBottom: '16px' }}>
+                        <button
+                          className="btn"
+                          style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+                          onClick={(e) => { e.stopPropagation(); setShowBlocked(p => ({ ...p, [lvl.level]: !p[lvl.level] })); }}
+                        >
+                          {showBlocked[lvl.level] ? 'Hide' : 'Show'} {lvl.blocked.length} prompt
+                          {lvl.blocked.length === 1 ? '' : 's'} that never reached Leo
+                        </button>
+                        {showBlocked[lvl.level] && (
+                          <div style={{ marginTop: '10px', display: 'grid', gap: '6px' }}>
+                            {lvl.blocked.map((b, i) => (
+                              <div key={i} style={{ padding: '8px 10px', background: '#0d0d1a', borderRadius: '4px', border: '1px solid #2d3748', fontSize: '0.8rem' }}>
+                                <span style={badgeStyle(b.blockedBy === 'input' ? '#f59e0b' : '#ef4444')}>
+                                  {b.blockedBy === 'input' ? `input filter: "${b.keyword}"` : 'output filter'}
+                                </span>
+                                <span style={{ color: '#94a3b8' }}>{b.family} — "{b.prompt}"</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <h4 style={{ margin: '0 0 12px 0', color: '#94a3b8', fontSize: '0.85rem', textTransform: 'uppercase' }}>Attacks Tested</h4>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {lvl.attacks.map((att, idx) => (
@@ -660,6 +788,8 @@ export default function Calibration() {
                           : 'All levels'}
                         {run.tokens ? ` · ${fmt(run.tokens.totalTokens)} tokens` : ''}
                         {run.backendLabel ? ` · ${run.backendLabel}` : ''}
+                        {run.repeats && run.repeats > 1 ? ` · ${run.repeats}× aggregated` : ''}
+                        {run.attempts && run.attempts !== 2 ? ` · ${run.attempts} attempts` : ''}
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>

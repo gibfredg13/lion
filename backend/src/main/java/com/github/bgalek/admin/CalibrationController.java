@@ -31,13 +31,21 @@ public class CalibrationController {
         return adminAttr != null && (Boolean) adminAttr;
     }
 
-    public record CalibrationStartRequest(List<Integer> levels) {}
+    public record CalibrationStartRequest(List<Integer> levels, List<String> families,
+                                          Integer attempts, Integer repeats) {}
 
     /** Which levels calibration can be pointed at, for the level picker in the war room. */
     @GetMapping("/calibration/levels")
     public List<Integer> calibrationLevels(HttpSession session) {
         if (!isAdmin(session)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin access required");
         return calibrationService.availableLevels();
+    }
+
+    /** The attack families the corpus knows, so the dashboard can offer them. */
+    @GetMapping("/calibration/families")
+    public List<String> calibrationFamilies(HttpSession session) {
+        if (!isAdmin(session)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin access required");
+        return CalibrationService.families();
     }
 
     @PostMapping("/calibration/start")
@@ -47,7 +55,11 @@ public class CalibrationController {
             return ResponseEntity.status(HttpStatus.CONFLICT).body("Calibration already running");
         }
         try {
-            var run = calibrationService.start(req == null ? null : req.levels(), this::broadcastCalibrationLevel);
+            var run = calibrationService.start(optionsOf(
+                    req == null ? null : req.levels(),
+                    req == null ? null : req.families(),
+                    req == null ? null : req.attempts(),
+                    req == null ? null : req.repeats()), this::broadcastCalibrationLevel);
             return ResponseEntity.ok(run);
         } catch (IllegalArgumentException | IllegalStateException e) {
             // IllegalStateException is the preflight refusing a run against an unreachable
@@ -61,7 +73,11 @@ public class CalibrationController {
      *               cannot POST, so the selection has to ride on the stream URL.
      */
     @GetMapping(value = "/calibration/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter streamCalibration(HttpSession session, @RequestParam(value = "levels", required = false) String levels) {
+    public SseEmitter streamCalibration(HttpSession session,
+                                        @RequestParam(value = "levels", required = false) String levels,
+                                        @RequestParam(value = "families", required = false) String families,
+                                        @RequestParam(value = "attempts", required = false) Integer attempts,
+                                        @RequestParam(value = "repeats", required = false) Integer repeats) {
         if (!isAdmin(session)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin access required");
         SseEmitter emitter = new SseEmitter(1800000L);
         calibrationEmitters.add(emitter);
@@ -70,7 +86,9 @@ public class CalibrationController {
 
         if (calibrationService.current() == null) {
             try {
-                calibrationService.start(parseLevels(levels), this::broadcastCalibrationLevel);
+                calibrationService.start(
+                        optionsOf(parseLevels(levels), parseFamilies(families), attempts, repeats),
+                        this::broadcastCalibrationLevel);
             } catch (RuntimeException e) {
                 sendTo(emitter, "failed", e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
                 emitter.complete();
@@ -80,6 +98,22 @@ public class CalibrationController {
             startCalibrationCompletionWatcher();
         }
         return emitter;
+    }
+
+    private static CalibrationService.CalibrationOptions optionsOf(
+            List<Integer> levels, List<String> families, Integer attempts, Integer repeats) {
+        return new CalibrationService.CalibrationOptions(
+                levels == null ? List.of() : levels,
+                families == null ? List.of() : families,
+                attempts == null ? 2 : attempts,
+                repeats == null ? 1 : repeats);
+    }
+
+    /** Comma separated, like the levels: EventSource cannot POST, so it all rides on the URL. */
+    private static List<String> parseFamilies(String families) {
+        if (families == null || families.isBlank()) return List.of();
+        return java.util.Arrays.stream(families.split(",")).map(String::trim)
+                .filter(f -> !f.isEmpty()).toList();
     }
 
     private static List<Integer> parseLevels(String levels) {
